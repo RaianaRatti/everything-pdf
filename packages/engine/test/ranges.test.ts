@@ -16,9 +16,20 @@ describe("parsePageRanges", () => {
     expect(parsePageRanges(" 2 - 3 ,, 1 ", 3)).toEqual([[1, 2], [0]]);
   });
 
-  it.each(["", "abc", "0", "11", "1-11", "-", "1-2-3", "2.5"])("rejects %j", (input) => {
-    expect(() => parsePageRanges(input, 10)).toThrow(PdfEngineError);
+  it("joins non-consecutive pages with +", () => {
+    expect(parsePageRanges("1+3, 2+4, 1-2+5", 5)).toEqual([
+      [0, 2],
+      [1, 3],
+      [0, 1, 4],
+    ]);
   });
+
+  it.each(["", "abc", "0", "11", "1-11", "-", "1-2-3", "2.5", "1+", "+1"])(
+    "rejects %j",
+    (input) => {
+      expect(() => parsePageRanges(input, 10)).toThrow(PdfEngineError);
+    },
+  );
 });
 
 describe("chunkPages", () => {

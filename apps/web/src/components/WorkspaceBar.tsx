@@ -1,4 +1,4 @@
-import { Download, Plus, Redo2, Undo2, X } from "lucide-react";
+import { Download, Plus, Redo2, Trash2, Undo2 } from "lucide-react";
 import { addFiles, downloadDocument } from "../lib/actions";
 import { pluralize } from "../lib/files";
 import { useWorkspace } from "../store/workspace";
@@ -58,13 +58,11 @@ export function WorkspaceBar() {
         </FilePickerButton>
         <Button
           variant="ghost"
-          onClick={() => {
-            if (confirm("Close all files and start over?")) reset();
-          }}
-          title="Start over"
-          aria-label="Start over"
+          onClick={reset}
+          title="Clear all files now, without asking"
+          aria-label="Clear all files"
         >
-          <X className="size-4" />
+          <Trash2 className="size-4" />
         </Button>
         <Button variant="primary" onClick={() => void downloadDocument()}>
           <Download className="size-4" /> Download

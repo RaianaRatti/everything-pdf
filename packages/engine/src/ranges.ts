@@ -2,7 +2,8 @@ import { PdfEngineError } from "./errors";
 
 /**
  * Parses a page-range string such as "1-3, 5, 8-" into groups of 0-based page indices.
- * Each comma-separated part becomes one group. Open-ended ranges ("8-") run to the last
+ * Each comma-separated part becomes one group, and "+" joins pieces into the same group so
+ * pages need not be consecutive: "1+3, 2+4" is two groups, [1, 3] and [2, 4]. Open-ended ranges ("8-") run to the last
  * page, and reversed ranges ("5-3") produce descending pages.
  */
 export function parsePageRanges(input: string, pageCount: number): number[][] {
@@ -28,12 +29,9 @@ export function parsePageRanges(input: string, pageCount: number): number[][] {
     return n;
   };
 
-  return parts.map((part) => {
+  const parseRange = (part: string): number[] => {
     const match = /^(\d*)\s*-\s*(\d*)$/.exec(part);
-    if (!match) {
-      const n = toPage(part, part);
-      return [n - 1];
-    }
+    if (!match) return [toPage(part, part) - 1];
     const [, startRaw = "", endRaw = ""] = match;
     if (!startRaw && !endRaw) {
       throw new PdfEngineError("bad-input", `"${part}" isn't a valid page range.`);
@@ -44,7 +42,25 @@ export function parsePageRanges(input: string, pageCount: number): number[][] {
     const pages: number[] = [];
     for (let n = start; n !== end + step; n += step) pages.push(n - 1);
     return pages;
-  });
+  };
+
+  return parts.map((part) =>
+    part.split("+").flatMap((piece) => {
+      const trimmed = piece.trim();
+      if (!trimmed) throw new PdfEngineError("bad-input", `"${part}" isn't a valid page range.`);
+      return parseRange(trimmed);
+    }),
+  );
+}
+
+/** Short human label for a group of 0-based pages: "page 2", "pages 1-3" or "pages 1, 3". */
+export function describePages(pages: number[]): string {
+  if (pages.length === 1) return `page ${pages[0]! + 1}`;
+  const consecutive = pages.every((p, i) => i === 0 || p === pages[i - 1]! + 1);
+  const label = consecutive
+    ? `${pages[0]! + 1}-${pages.at(-1)! + 1}`
+    : pages.map((p) => p + 1).join(", ");
+  return `pages ${label}`;
 }
 
 /** Splits 0..pageCount-1 into consecutive chunks of `size` pages. */

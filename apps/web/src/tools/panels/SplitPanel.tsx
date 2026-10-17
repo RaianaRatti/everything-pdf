@@ -1,4 +1,4 @@
-import { planSplit, type SplitMode } from "@everything-pdf/engine/pure";
+import { describePages, planSplit, type SplitMode } from "@everything-pdf/engine/pure";
 import { Download } from "lucide-react";
 import { useState } from "react";
 import { errorMessage, materialize, runTask } from "../../lib/actions";
@@ -9,12 +9,6 @@ import { useWorkspace } from "../../store/workspace";
 import { Button, Field, Hint, PanelSection, Segmented, inputClass } from "../../components/ui";
 
 type Kind = SplitMode["kind"];
-
-function describeGroup(pages: number[]): string {
-  const first = pages[0]! + 1;
-  const last = pages.at(-1)! + 1;
-  return pages.length === 1 ? `page ${first}` : `pages ${first}-${last}`;
-}
 
 export function SplitPanel() {
   const pageCount = useWorkspace((s) => s.pages.length);
@@ -41,7 +35,7 @@ export function SplitPanel() {
       const base = baseName(ensurePdfExtension(outputName));
       const parts = await engine.extractGroups(await materialize(), groups);
       downloadFiles(
-        parts.map((p) => ({ name: `${base} (${describeGroup(p.pages)}).pdf`, bytes: p.bytes })),
+        parts.map((p) => ({ name: `${base} (${describePages(p.pages)}).pdf`, bytes: p.bytes })),
         `${base}-split.zip`,
       );
     });
@@ -76,12 +70,17 @@ export function SplitPanel() {
             <input
               value={ranges}
               onChange={(e) => setRanges(e.target.value)}
-              placeholder="e.g. 1-3, 4-8, 9-"
+              placeholder="e.g. 1-3, 4-8, 1+3, 2+4"
               className={inputClass}
             />
           </Field>
         )}
-        {kind === "ranges" && <Hint>Each comma-separated range becomes its own file.</Hint>}
+        {kind === "ranges" && (
+          <Hint>
+            Each comma-separated range becomes its own file. Use + to combine pages that aren't next
+            to each other, e.g. 1+3, 2+4.
+          </Hint>
+        )}
       </PanelSection>
       <PanelSection title="Result">
         {error ? (
@@ -94,7 +93,7 @@ export function SplitPanel() {
             <ul className="max-h-48 space-y-1 overflow-auto text-sm text-ink">
               {groups.slice(0, 50).map((g, i) => (
                 <li key={i}>
-                  {i + 1}. {describeGroup(g)}
+                  {i + 1}. {describePages(g)}
                 </li>
               ))}
               {groups.length > 50 && <li>…and {groups.length - 50} more</li>}

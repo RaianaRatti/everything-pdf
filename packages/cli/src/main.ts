@@ -32,6 +32,7 @@ import {
   imagesToPdf,
   loadPdf,
   merge,
+  describePages,
   parsePageRanges,
   planSplit,
   replacePagesWithImages,
@@ -184,9 +185,7 @@ function paper(values: Values): PaperSize {
 }
 
 function rangeLabel(pages: number[]): string {
-  const first = pages[0]! + 1;
-  const last = pages.at(-1)! + 1;
-  return pages.length === 1 ? `page-${first}` : `pages-${first}-${last}`;
+  return describePages(pages).replace(/, /g, "+").replace(" ", "-");
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -207,7 +206,8 @@ const commands: Command[] = [
   {
     name: "split",
     summary: "Split into several PDFs: every N pages, single pages, or custom ranges",
-    usage: "split <in.pdf> [--every 2 | --single | --ranges 1-3,4-8,9-] [-o out-dir]",
+    usage:
+      "split <in.pdf> [--every 2 | --single | --ranges 1-3,4-8,9- (use + to join pages: 1+3,2+4)] [-o out-dir]",
     options: {
       ...output,
       every: { type: "string" },
