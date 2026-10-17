@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Pixelify Sans", ui-monospace, monospace;
+
+  --color-paper: #ffffff;
+  --color-paper-2: #ffffff;
+  --color-paper-3: #ededed;
+  --color-card: #ffffff;
+  --color-line: #000000;
+  --color-line-strong: #000000;
+  --color-ink: #000000;
+  --color-ink-2: #3d3d3d;
+  --color-ink-3: #6b6b6b;
+}
+
+:root {
+  color-scheme: light;
+}
+
+body {
+  @apply bg-paper font-sans text-ink;
+}
+
+::selection {
+  @apply bg-ink text-paper;
+}

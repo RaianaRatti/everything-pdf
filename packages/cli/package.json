@@ -1,0 +1,30 @@
+{
+  "name": "@everything-pdf/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Everything PDF on the command line: merge, split, rotate, invert, sign, compress and more.",
+  "type": "module",
+  "bin": {
+    "everything-pdf": "dist/cli.js",
+    "epdf": "dist/cli.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "esbuild src/cli.ts --bundle --platform=node --format=esm --target=node22 --outfile=dist/cli.js --external:pdf-lib --external:pdfjs-dist --external:@napi-rs/canvas",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@everything-pdf/engine": "*",
+    "@napi-rs/canvas": "^1.0.11",
+    "pdf-lib": "^1.17.1",
+    "pdfjs-dist": "^6.4.299"
+  },
+  "devDependencies": {
+    "@types/node": "^26.6.5",
+    "esbuild": "^0.28.2",
+    "vitest": "^5.0.5"
+  }
+}
