@@ -29,6 +29,14 @@ const router = createBrowserRouter([
         path: "/batch",
         lazy: () => import("./routes/Batch").then((m) => ({ Component: m.Batch })),
       },
+      {
+        path: "/compare",
+        lazy: () => import("./routes/Compare").then((m) => ({ Component: m.Compare })),
+      },
+      {
+        path: "/scan",
+        lazy: () => import("./routes/Scan").then((m) => ({ Component: m.Scan })),
+      },
       { path: "/:toolId", lazy: workspace },
       { path: "*", element: <Navigate to="/" replace /> },
     ],

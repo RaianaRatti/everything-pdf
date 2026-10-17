@@ -10,6 +10,8 @@ export interface RasterOptions {
   quality?: number;
   invert?: boolean;
   grayscale?: boolean;
+  /** Draws on top of each rendered page (e.g. redaction boxes), before encoding. */
+  paint?: (ctx: CanvasRenderingContext2D, width: number, height: number, index: number) => void;
   onProgress?: (done: number, total: number) => void;
 }
 
@@ -20,7 +22,15 @@ export interface RasterOptions {
 export async function rasterizePages(
   pages: PageItem[],
   files: Record<string, SourceFile>,
-  { dpi, format, quality = 0.9, invert = false, grayscale = false, onProgress }: RasterOptions,
+  {
+    dpi,
+    format,
+    quality = 0.9,
+    invert = false,
+    grayscale = false,
+    paint,
+    onProgress,
+  }: RasterOptions,
 ): Promise<Uint8Array[]> {
   const out: Uint8Array[] = [];
   for (const [i, page] of pages.entries()) {
@@ -39,6 +49,8 @@ export async function rasterizePages(
       if (grayscale) grayscalePixels(image.data);
       ctx.putImageData(image, 0, 0);
     }
+
+    paint?.(canvas.getContext("2d")!, canvas.width, canvas.height, i);
 
     const blob = await canvasToBlob(canvas, format === "jpg" ? "image/jpeg" : "image/png", quality);
     out.push(await readBytes(blob));

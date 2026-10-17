@@ -128,3 +128,44 @@ export async function decryptPdf(bytes: Uint8Array, password = ""): Promise<Uint
     throw err;
   }
 }
+
+/**
+ * Rebuilds a damaged PDF. pdf-lib finds objects by scanning the whole file rather than trusting
+ * the cross-reference table, so it recovers files whose table is broken, missing or off; saving
+ * writes a fresh one. qpdf is the fallback for files pdf-lib can't parse at all. (This qpdf build
+ * doesn't reconstruct broken tables itself, so it can't go first.)
+ */
+export async function repairPdf(bytes: Uint8Array): Promise<Uint8Array> {
+  try {
+    const doc = await PDFDocument.load(bytes, {
+      ignoreEncryption: true,
+      throwOnInvalidObject: false,
+      updateMetadata: false,
+    });
+    if (doc.getPageCount() > 0 && !doc.isEncrypted) {
+      return await doc.save({ useObjectStreams: true });
+    }
+  } catch {
+    // Fall through to qpdf.
+  }
+  return runQpdf(bytes, []);
+}
+
+/** "Fast web view": reorders the file so a browser can show page 1 before the rest arrives. */
+export function linearizePdf(bytes: Uint8Array): Promise<Uint8Array> {
+  return runQpdf(bytes, ["--linearize"]);
+}
+
+/**
+ * Lossless size reduction: recompresses every stream at the highest level, packs objects into
+ * compressed object streams and drops resources pages don't use.
+ */
+export function optimizeStructure(bytes: Uint8Array): Promise<Uint8Array> {
+  return runQpdf(bytes, [
+    "--object-streams=generate",
+    "--compress-streams=y",
+    "--recompress-flate",
+    "--compression-level=9",
+    "--remove-unreferenced-resources=yes",
+  ]);
+}

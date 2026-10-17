@@ -1,4 +1,4 @@
-import { emptyDocInfo, type DocInfo } from "@everything-pdf/engine/pure";
+import { emptyDocInfo, type Bookmark, type DocInfo } from "@everything-pdf/engine/pure";
 import { create } from "zustand";
 import { closeUnusedPdfs } from "../lib/pdfjs";
 import { uid } from "../lib/files";
@@ -13,6 +13,10 @@ export interface SourceFile {
   info?: DocInfo;
   /** The file was password-protected and has been decrypted. */
   unlocked?: boolean;
+  /** The file was damaged and has been rebuilt. */
+  repaired?: boolean;
+  /** Bookmarks read when the file was loaded (by page index in this file). */
+  outline?: Bookmark[];
 }
 
 /**
@@ -27,9 +31,18 @@ export interface PageItem {
   rotation: number;
 }
 
+/** A bookmark in the workspace; it follows its page wherever the page moves. */
+export interface BookmarkItem {
+  id: string;
+  title: string;
+  pageId: string;
+  level: number;
+}
+
 interface Snapshot {
   files: Record<string, SourceFile>;
   pages: PageItem[];
+  bookmarks: BookmarkItem[];
 }
 
 export interface Notice {
@@ -56,6 +69,7 @@ interface WorkspaceState extends Snapshot {
   insertFiles(files: SourceFile[], at: number): void;
   replaceDocument(file: SourceFile): void;
   setPages(pages: PageItem[]): void;
+  setBookmarks(bookmarks: BookmarkItem[]): void;
   movePage(activeId: string, overId: string): void;
   rotate(ids: string[], delta: number): void;
   remove(ids: string[]): void;
@@ -85,6 +99,14 @@ function pagesFor(file: SourceFile): PageItem[] {
   }));
 }
 
+/** A loaded file's own bookmarks, pointed at its pages in the workspace. */
+function bookmarksFor(file: SourceFile, pages: PageItem[]): BookmarkItem[] {
+  return (file.outline ?? []).flatMap((b) => {
+    const page = pages[b.pageIndex];
+    return page ? [{ id: uid(), title: b.title, pageId: page.id, level: b.level }] : [];
+  });
+}
+
 /** Drops files no page refers to, so history doesn't pin unrelated documents in pdf.js. */
 function syncOpenDocuments(pages: PageItem[]): void {
   closeUnusedPdfs(new Set(pages.map((p) => p.fileId)));
@@ -93,13 +115,15 @@ function syncOpenDocuments(pages: PageItem[]): void {
 export const useWorkspace = create<WorkspaceState>()((set, get) => {
   /** Applies a change to files/pages as one undoable step. */
   const commit = (next: Partial<Snapshot>) => {
-    const { files, pages, past, selection } = get();
+    const { files, pages, bookmarks, past, selection } = get();
     const nextPages = next.pages ?? pages;
     const alive = new Set(nextPages.map((p) => p.id));
     set({
       files: next.files ?? files,
       pages: nextPages,
-      past: [...past, { files, pages }].slice(-HISTORY_LIMIT),
+      // Bookmarks to deleted pages go with them (and come back on undo).
+      bookmarks: (next.bookmarks ?? bookmarks).filter((b) => alive.has(b.pageId)),
+      past: [...past, { files, pages, bookmarks }].slice(-HISTORY_LIMIT),
       future: [],
       selection: selection.filter((id) => alive.has(id)),
     });
@@ -123,6 +147,7 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => {
   return {
     files: {},
     pages: [],
+    bookmarks: [],
     selection: [],
     anchor: null,
     past: [],
@@ -143,8 +168,19 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => {
         });
       }
       const nextFiles = { ...files };
-      for (const f of added) nextFiles[f.id] = f;
-      commit({ files: nextFiles, pages: [...pages, ...added.flatMap(pagesFor)] });
+      const newPages: PageItem[] = [];
+      const newBookmarks: BookmarkItem[] = [];
+      for (const f of added) {
+        nextFiles[f.id] = f;
+        const filePages = pagesFor(f);
+        newPages.push(...filePages);
+        newBookmarks.push(...bookmarksFor(f, filePages));
+      }
+      commit({
+        files: nextFiles,
+        pages: [...pages, ...newPages],
+        bookmarks: [...get().bookmarks, ...newBookmarks],
+      });
     },
 
     insertFiles(added, at) {
@@ -153,22 +189,39 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => {
       if (pages.length === 0) return get().addFiles(added);
       const nextFiles = { ...files };
       for (const f of added) nextFiles[f.id] = f;
-      const inserted = added.flatMap(pagesFor);
+      const inserted: PageItem[] = [];
+      const newBookmarks: BookmarkItem[] = [];
+      for (const f of added) {
+        const filePages = pagesFor(f);
+        inserted.push(...filePages);
+        newBookmarks.push(...bookmarksFor(f, filePages));
+      }
       const index = Math.max(0, Math.min(at, pages.length));
       commit({
         files: nextFiles,
         pages: [...pages.slice(0, index), ...inserted, ...pages.slice(index)],
+        bookmarks: [...get().bookmarks, ...newBookmarks],
       });
       set({ selection: inserted.map((p) => p.id), anchor: inserted[0]?.id ?? null });
     },
 
     replaceDocument(file) {
-      commit({ files: { ...get().files, [file.id]: file }, pages: pagesFor(file) });
+      // The new file carries the bookmarks that were written into it.
+      const pages = pagesFor(file);
+      commit({
+        files: { ...get().files, [file.id]: file },
+        pages,
+        bookmarks: bookmarksFor(file, pages),
+      });
       set({ selection: [], anchor: null });
     },
 
     setPages(pages) {
       commit({ pages });
+    },
+
+    setBookmarks(bookmarks) {
+      commit({ bookmarks });
     },
 
     movePage(activeId, overId) {
@@ -208,23 +261,24 @@ export const useWorkspace = create<WorkspaceState>()((set, get) => {
     },
 
     undo() {
-      const { past, future, files, pages } = get();
+      const { past, future, files, pages, bookmarks } = get();
       const prev = past.at(-1);
       if (!prev) return;
-      restore(prev, past.slice(0, -1), [{ files, pages }, ...future]);
+      restore(prev, past.slice(0, -1), [{ files, pages, bookmarks }, ...future]);
     },
 
     redo() {
-      const { past, future, files, pages } = get();
+      const { past, future, files, pages, bookmarks } = get();
       const next = future[0];
       if (!next) return;
-      restore(next, [...past, { files, pages }], future.slice(1));
+      restore(next, [...past, { files, pages, bookmarks }], future.slice(1));
     },
 
     reset() {
       set({
         files: {},
         pages: [],
+        bookmarks: [],
         selection: [],
         anchor: null,
         past: [],

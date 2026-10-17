@@ -11,6 +11,11 @@ export interface TextRun {
   y: number;
   width: number;
   height: number;
+  /**
+   * The text doesn't run left to right as displayed (e.g. on a rotated page), so character
+   * positions can't be estimated: matches cover the whole run, and a hit removes all of it.
+   */
+  vertical?: boolean;
 }
 
 export interface RedactBox {
@@ -69,6 +74,12 @@ export function findMatches(runs: TextRun[], pattern: RegExp): RedactBox[] {
       const a = Math.max(from, starts[i]!) - starts[i]!;
       const b = Math.min(to, starts[i]! + run.text.length) - starts[i]!;
       if (b <= a || run.text.length === 0) return;
+      if (run.vertical) {
+        boxes.push(
+          pad({ x: run.x, y: run.y, width: run.width, height: run.height }, run.width * 0.15),
+        );
+        return;
+      }
       const charWidth = run.width / run.text.length;
       const x0 = run.x + Math.max(0, a - 1) * charWidth;
       const x1 = run.x + Math.min(run.text.length, b + 1) * charWidth;
@@ -102,10 +113,18 @@ export function keepOutside(runs: TextRun[], boxes: RedactBox[]): TextRun[] {
       kept.push(run);
       continue;
     }
+    if (run.vertical) continue;
     const n = run.text.length;
     const charWidth = n ? run.width / n : 0;
+    // Character boxes are narrowed a little so a box's safety padding (which already covers a
+    // whole extra character on each side of a match) doesn't also take a sliver of the next one.
     const covered = Array.from({ length: n }, (_, i) => {
-      const char = { x: run.x + i * charWidth, y: run.y, width: charWidth, height: run.height };
+      const char = {
+        x: run.x + (i + 0.15) * charWidth,
+        y: run.y,
+        width: charWidth * 0.7,
+        height: run.height,
+      };
       return hits.some((b) => overlaps(char, b));
     });
     let start = -1;

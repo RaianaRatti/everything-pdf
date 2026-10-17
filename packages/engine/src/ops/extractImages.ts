@@ -135,7 +135,7 @@ function convert(doc: PDFDocument, stream: PDFRawStream): Omit<ExtractedImage, "
  * Decodes an image's samples to 8-bit gray or RGB. Handles Flate/LZW/uncompressed data with
  * PNG predictors, 1–8 bits per sample, gray/RGB/ICC and indexed color. Returns null otherwise.
  */
-function decodeSamples(
+export function decodeSamples(
   doc: PDFDocument,
   stream: PDFRawStream,
   width: number,

@@ -1,6 +1,6 @@
 {
-  "name": "Everything PDF",
-  "short_name": "Everything PDF",
+  "name": "everything-pdf",
+  "short_name": "everything-pdf",
   "description": "Merge, split, edit, sign, protect and convert PDFs. Files never leave your device.",
   "start_url": "/",
   "scope": "/",

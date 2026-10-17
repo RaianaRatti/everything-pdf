@@ -21,7 +21,7 @@ function ToolWorkspace({ tool }: { tool: Tool }) {
   useLeaveWarning(hasPages);
 
   useEffect(() => {
-    document.title = `${tool.name} · Everything PDF`;
+    document.title = `${tool.name} · everything-pdf`;
   }, [tool]);
 
   const Panel = panels[tool.id]!;
@@ -50,6 +50,7 @@ function ToolWorkspace({ tool }: { tool: Tool }) {
               onFiles={(f) => void addFiles(f)}
               accept="application/pdf,.pdf,image/*"
               title="drop PDF here"
+              subtitle={tool.description}
             />
           </div>
         </main>

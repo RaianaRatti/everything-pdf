@@ -45,10 +45,12 @@ async function openPdfFile(file: File): Promise<SourceFile | null> {
       return {
         id: uid(),
         name: file.name,
-        bytes: result.unlocked ?? bytes,
+        bytes: result.unlocked ?? result.repaired ?? bytes,
         pageCount: result.pageCount,
         info: { title, author, subject, keywords },
         unlocked: result.unlocked !== null,
+        repaired: result.repaired !== null,
+        outline: result.outline,
       };
     }
     // Hide the busy overlay while the password dialog is up.
@@ -104,6 +106,15 @@ export async function loadFiles(files: File[]): Promise<SourceFile[]> {
   );
 
   if (errors.length > 0) state().setNotice({ kind: "error", message: errors.join("\n") });
+  else {
+    const repaired = loaded.filter((f) => f.repaired).map((f) => f.name);
+    if (repaired.length) {
+      state().setNotice({
+        kind: "success",
+        message: `${repaired.join(", ")} ${repaired.length === 1 ? "was" : "were"} damaged and has been repaired.`,
+      });
+    }
+  }
   return loaded;
 }
 
@@ -122,11 +133,22 @@ export async function materialize(pages: PageItem[] = state().pages): Promise<Ui
   const { files } = state();
   const sources: Record<string, Uint8Array> = {};
   for (const p of pages) sources[p.fileId] ??= files[p.fileId]!.bytes;
+  const position = new Map(pages.map((p, i) => [p.id, i]));
+  const outline = state().bookmarks.flatMap((b) => {
+    const pageIndex = position.get(b.pageId);
+    return pageIndex === undefined ? [] : [{ title: b.title, pageIndex, level: b.level }];
+  });
   return engine.assemble(
     sources,
     pages.map((p) => ({ source: p.fileId, pageIndex: p.pageIndex, rotation: p.rotation })),
-    { info: state().docInfo },
+    { info: state().docInfo, outline },
   );
+}
+
+/** Wraps the bytes of a new version of the document as a source file. */
+export async function sourceFromBytes(bytes: Uint8Array): Promise<SourceFile> {
+  const { pageCount, outline } = await engine.inspect(bytes);
+  return { id: uid(), name: state().outputName, bytes, pageCount, outline };
 }
 
 /**
@@ -141,8 +163,7 @@ export async function applyToDocument(
   const done = await runTask(message, async () => {
     const pages = state().pages;
     const out = await operation(await materialize(pages), pages);
-    const { pageCount } = await engine.inspect(out);
-    state().replaceDocument({ id: uid(), name: state().outputName, bytes: out, pageCount });
+    state().replaceDocument(await sourceFromBytes(out));
     return true;
   });
   if (done && success) state().setNotice({ kind: "success", message: success });

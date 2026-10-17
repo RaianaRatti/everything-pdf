@@ -12,11 +12,8 @@ export function Home() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex items-baseline justify-between gap-4 border-b-2 border-ink px-5 py-4 sm:px-8">
-        <span className="text-lg">everything pdf</span>
-        <span className="hidden text-sm text-ink-3 sm:inline">
-          no uploads. runs in your browser.
-        </span>
+      <header className="border-b-2 border-ink px-5 py-4 sm:px-8">
+        <span className="text-lg">everything-pdf</span>
       </header>
 
       <main className="mx-auto flex w-full max-w-4xl flex-1 flex-col gap-10 px-5 py-10 sm:px-8 sm:py-16">

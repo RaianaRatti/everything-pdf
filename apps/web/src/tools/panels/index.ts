@@ -1,5 +1,10 @@
 import type { ComponentType } from "react";
+import { BookmarksPanel } from "./BookmarksPanel";
 import { CompressPanel } from "./CompressPanel";
+import { DigitalSignPanel, VerifyPanel } from "./DigitalSignaturePanels";
+import { BookletPanel, NUpPanel, PosterPanel, SplitSpreadsPanel } from "./LayoutPanels";
+import { RedactPanel } from "./RedactPanel";
+import { RepairPanel } from "./RepairPanel";
 import { CropPanel } from "./CropPanel";
 import { EditPanel } from "./EditPanel";
 import { ExtractImagesPanel } from "./ExtractImagesPanel";
@@ -33,22 +38,31 @@ export const panels: Record<string, ComponentType> = {
   extract: ExtractPanel,
   insert: InsertPanel,
   interleave: InterleavePanel,
+  bookmarks: BookmarksPanel,
   edit: EditPanel,
   "page-numbers": PageNumbersPanel,
   "header-footer": HeaderFooterPanel,
   watermark: WatermarkPanel,
   "remove-annotations": RemoveAnnotationsPanel,
+  redact: RedactPanel,
   sign: SignPanel,
   forms: FormsPanel,
+  "digital-signature": DigitalSignPanel,
+  verify: VerifyPanel,
   crop: CropPanel,
   resize: ResizePanel,
   invert: InvertPanel,
   grayscale: GrayscalePanel,
+  "n-up": NUpPanel,
+  booklet: BookletPanel,
+  poster: PosterPanel,
+  "split-spreads": SplitSpreadsPanel,
   protect: ProtectPanel,
   unlock: UnlockPanel,
   properties: PropertiesPanel,
   compress: CompressPanel,
   ocr: OcrPanel,
+  repair: RepairPanel,
   "pdf-to-images": PdfToImagesPanel,
   "pdf-to-text": PdfToTextPanel,
   "extract-images": ExtractImagesPanel,

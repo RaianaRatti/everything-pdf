@@ -1,10 +1,12 @@
 # Everything PDF
 
 A website for everything you'd want to do with a PDF: merge, split, reorder, rotate, insert and
-interleave pages; add text, images, highlights, notes, page numbers, headers, footers and
-watermarks; sign and fill forms; crop, resize, invert or grayscale pages; password-protect,
-unlock and strip metadata; compress and OCR; convert to and from images and text; and run any of
-it on many files at once.
+interleave pages, and edit bookmarks; add text, images, links, highlights, notes, form fields,
+page numbers, headers, footers and watermarks; redact for real; sign (drawn or with a
+certificate), verify signatures and fill forms; crop, resize, dark-mode, invert or grayscale
+pages; make n-up sheets, booklets and posters; password-protect, unlock and strip metadata;
+compress, repair and OCR; compare two versions; scan pages with a camera; convert to and from
+images and text; and run any of it on many files at once, with saved recipes.
 
 All processing happens in the browser. Files are never uploaded. After the first visit the app
 works offline (except OCR's first run, which downloads its language data). Press ⌘K / Ctrl+K
@@ -34,6 +36,10 @@ npx epdf rotate scan.pdf --angle -90 --pages 2,4
 npx epdf invert slides.pdf
 npx epdf sign contract.pdf --image signature.png --page 3 --x 60% --y 80% --width 25%
 npx epdf compress photos.pdf --level high
+npx epdf redact report.pdf --find "Jane Doe" --pattern email,phone
+npx epdf dark slides.pdf
+npx epdf protect contract.pdf --password s3cret --no-copy
+npx epdf sign-cert contract.pdf --cert me.p12 --password … --visible
 ```
 
 To use `epdf` from anywhere: `npm install -g ./packages/cli` (after building).
@@ -54,13 +60,13 @@ To use `epdf` from anywhere: `npm install -g ./packages/cli` (after building).
 
 ```
 apps/web/          React app (Vite, Tailwind, Zustand, dnd-kit)
-  src/routes/      Home, the workspace (one route per tool), Images → PDF, batch
+  src/routes/      Home, the workspace (one route per tool), Images → PDF, batch, compare, scan
   src/tools/       Tool registry and each tool's side panel
   src/store/       Workspace state: pages, selection, undo/redo history
   src/lib/         pdf.js rendering, worker bridge, downloads, image helpers
   src/workers/     Web Worker that runs the engine off the main thread
   service-worker.js  Offline cache; the build fills in the file list (see vite.config.ts)
-packages/engine/   Framework-free PDF operations (pdf-lib, qpdf-wasm), tested in Node
+packages/engine/   Framework-free PDF operations (pdf-lib, qpdf-wasm, node-forge), tested in Node
 packages/cli/      The `epdf` command-line tool, built on the engine
 ```
 

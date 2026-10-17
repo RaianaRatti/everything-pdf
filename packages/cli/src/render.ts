@@ -1,6 +1,6 @@
 import { createRequire } from "node:module";
 import { dirname, join } from "node:path";
-import { invertPixels } from "@everything-pdf/engine/pure";
+import { invertPixels, type TextRun } from "@everything-pdf/engine/pure";
 import { createCanvas, type SKRSContext2D } from "@napi-rs/canvas";
 import { getDocument, type PDFPageProxy } from "pdfjs-dist/legacy/build/pdf.mjs";
 
@@ -19,6 +19,8 @@ export interface RenderOptions {
   /** JPEG quality, 0–1. */
   quality?: number;
   invert?: boolean;
+  /** Draws on each rendered page before encoding (e.g. redaction boxes). */
+  paint?: (ctx: SKRSContext2D, width: number, height: number, index: number) => void;
 }
 
 /**
@@ -28,7 +30,7 @@ export interface RenderOptions {
 export async function renderPages(
   bytes: Uint8Array,
   pageIndices: number[],
-  { dpi, format, quality = 0.9, invert = false }: RenderOptions,
+  { dpi, format, quality = 0.9, invert = false, paint }: RenderOptions,
   onProgress?: (done: number, total: number) => void,
 ): Promise<Uint8Array[]> {
   const task = getDocument({
@@ -57,6 +59,7 @@ export async function renderPages(
       }).promise;
       page.cleanup();
       if (invert) invertCanvas(ctx, canvas.width, canvas.height);
+      paint?.(ctx, canvas.width, canvas.height, i);
       const encoded =
         format === "png"
           ? await canvas.encode("png")
@@ -74,4 +77,63 @@ function invertCanvas(ctx: SKRSContext2D, width: number, height: number): void {
   const image = ctx.getImageData(0, 0, width, height);
   invertPixels(image.data);
   ctx.putImageData(image, 0, 0);
+}
+
+/** The text on each page as runs with boxes (fractions of the displayed page, top-left origin). */
+export async function textRunsOf(bytes: Uint8Array): Promise<TextRun[][]> {
+  const task = getDocument({
+    data: bytes.slice(),
+    standardFontDataUrl,
+    cMapUrl,
+    cMapPacked: true,
+    verbosity: 0,
+  });
+  const doc = await task.promise;
+  try {
+    const pages: TextRun[][] = [];
+    for (let p = 1; p <= doc.numPages; p++) {
+      const page = await doc.getPage(p);
+      const viewport = page.getViewport({ scale: 1 });
+      const runs: TextRun[] = [];
+      for (const item of (await page.getTextContent()).items) {
+        if (!("str" in item) || !item.str.trim()) continue;
+        const [a, b, c, d, e, f] = item.transform as number[];
+        const along = Math.hypot(a!, b!) || 1;
+        const across = Math.hypot(c!, d!) || 1;
+        const dir = [a! / along, b! / along];
+        const up = [c! / across, d! / across];
+        const height = item.height || across;
+        const base = [e! - up[0]! * height * 0.25, f! - up[1]! * height * 0.25];
+        const corners = [
+          base,
+          [base[0]! + dir[0]! * item.width, base[1]! + dir[1]! * item.width],
+          [
+            base[0]! + dir[0]! * item.width + up[0]! * height * 1.25,
+            base[1]! + dir[1]! * item.width + up[1]! * height * 1.25,
+          ],
+          [base[0]! + up[0]! * height * 1.25, base[1]! + up[1]! * height * 1.25],
+        ].map(([x, y]) => viewport.convertToViewportPoint(x!, y!) as [number, number]);
+        const xs = corners.map((q) => q[0]);
+        const ys = corners.map((q) => q[1]);
+        const [sx, sy] = viewport.convertToViewportPoint(e!, f!) as [number, number];
+        const [tx, ty] = viewport.convertToViewportPoint(e! + dir[0]!, f! + dir[1]!) as [
+          number,
+          number,
+        ];
+        runs.push({
+          text: item.str,
+          x: Math.min(...xs) / viewport.width,
+          y: Math.min(...ys) / viewport.height,
+          width: (Math.max(...xs) - Math.min(...xs)) / viewport.width,
+          height: (Math.max(...ys) - Math.min(...ys)) / viewport.height,
+          vertical: tx - sx > Math.abs(ty - sy) ? undefined : true,
+        });
+      }
+      page.cleanup();
+      pages.push(runs);
+    }
+    return pages;
+  } finally {
+    await task.destroy();
+  }
 }

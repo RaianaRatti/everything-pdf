@@ -409,24 +409,60 @@ Notes on how Phase 2 differs from the original plan:
   grayscale, remove metadata, remove annotations and protect.
 - **Still in memory, not IndexedDB.** Saved signatures and persisted sessions remain open.
 
-### Phase 3: Advanced (ongoing)
+### Phase 3: Advanced ✅
 
-- [ ] True redaction (search-based + manual) with MuPDF
-- [ ] Vector invert / smart dark mode
-- [ ] Repair, linearize, better compression presets
-- [ ] Compare PDFs (text and visual diff)
-- [ ] Bookmarks editor, hyperlinks, form field creation
-- [ ] N-up, booklet, poster tiling, split double-page scans
-- [ ] Camera scan → PDF with edge detection and enhancement
-- [ ] Saved recipes/pipelines
-- [ ] Digital (cryptographic) signatures and verification
-- [ ] CLI package built on `packages/engine`
+- [x] True redaction (search-based + manual), without MuPDF (see notes)
+- [x] Vector invert / smart dark mode
+- [x] Repair, linearize, better compression presets
+- [x] Compare PDFs (text and visual diff)
+- [x] Bookmarks editor, hyperlinks, form field creation
+- [x] N-up, booklet, poster tiling, split double-page scans
+- [x] Camera scan → PDF with edge detection and enhancement
+- [x] Saved recipes/pipelines
+- [x] Digital (cryptographic) signatures and verification
+- [x] CLI package built on `packages/engine`
 
-### Phase 4: Server-side extras (optional)
+Notes on how Phase 3 differs from the original plan:
 
-- [ ] Dockerized API: LibreOffice (Office ↔ PDF), Ghostscript (PDF/A), Chromium (HTML/URL → PDF)
-- [ ] Stateless processing; files deleted right after the response; rate limiting; size caps
-- [ ] Opt-in AI tools (summarize, Q&A, translate)
+- **No MuPDF; the project stays permissively licensed** (decision 1 below). Everything here is
+  built on pdf-lib, pdf.js, qpdf-wasm and node-forge.
+- **Redaction burns boxes into page images.** Each redacted page is rendered with the boxes
+  painted on and replaced by that image, so nothing under a box survives; the page's other
+  text goes back as an invisible layer so it stays searchable. Every object only the old pages
+  used is deleted, including form fields on them (tested by scanning every stream for the
+  redacted text). Trade-off: redacted pages become images. Bookmarks and the file name aren't
+  touched; the panel says so.
+- **Search-based redaction estimates character positions** (pdf.js gives positions per text
+  run, not per character), so boxes are padded by a character on each side. Text running
+  vertically on screen (rotated pages) is covered and removed whole.
+- **Vector dark mode rewrites content streams** with a small content-stream parser
+  (`engine/src/content.ts`): every color operator is mapped, CMYK becomes RGB, images are
+  inverted through their /Decode arrays (or palettes) without decoding them. "Smart" mode
+  inverts lightness but keeps hue and leaves images alone. Gradients (shadings), spot colors
+  and annotation appearances are left as they are; the raster method remains for those.
+- **Repair** rebuilds files with pdf-lib, which scans for objects instead of trusting the
+  cross-reference table; qpdf is the fallback. (This qpdf-wasm build stops on broken tables
+  instead of reconstructing them.) Damaged files are repaired automatically when loaded.
+- **Compression** gained a lossless level, re-encodes losslessly stored photos as JPEG when it
+  saves at least a quarter (line art and screenshots are left alone), and finishes with a
+  qpdf pass (object streams, maximum Flate). "Fast web view" (linearization) is a download
+  option, since the workspace rebuilds files on download.
+- **Bookmarks and links survive the workspace.** Bookmarks are part of the undo history and
+  follow their pages; links to other pages are re-pointed when pages move, and links to pages
+  that were deleted are dropped instead of left dead.
+- **Digital signatures** are PKCS#7 detached (adbe.pkcs7.detached), RSA keys from .p12/.pfx,
+  signed with node-forge. Verification doesn't use forge (its RSA verify has a known
+  weakness, GHSA-86w9-cpqp-85rv); it parses the CMS structure itself and checks with
+  WebCrypto, which also covers EC keys. It reports integrity, signature validity, whether
+  anything was appended after signing, and certificate validity at signing time. It does not
+  check trust chains (there's no trust list).
+- **Camera scan** uses no OpenCV: Otsu thresholding + largest bright region for edge detection,
+  a homography for the perspective correction, and per-channel levels for cleanup, all in
+  `engine/src/scan.ts`. Corners can be dragged (or moved with arrow keys) when detection misses.
+- **Recipes** are saved in the browser (localStorage), never with passwords. Protect and fast
+  web view must be a recipe's last step.
+- **The CLI** gained dark, redact, watermark, nup, booklet, poster, split-spreads, protect,
+  unlock, repair, web, extract-images, sign-cert, verify and bookmarks.
 
 ---
 
@@ -443,7 +479,8 @@ Notes on how Phase 2 differs from the original plan:
 
 ## 8. Open decisions
 
-1. **License:** MIT (skip MuPDF for now) or AGPL (use MuPDF for redaction, compression, and vector invert)?
+1. ~~**License:** MIT (skip MuPDF for now) or AGPL (use MuPDF for redaction, compression, and vector invert)?~~
+   Decided: stay permissive, no MuPDF (Phase 3).
 2. **Server-side features:** build them at all, or stay 100% client-side?
 3. **Name / domain** for the site.
 4. **Monetization**, if any: none, donations, or a paid tier for server-side conversions?

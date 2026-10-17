@@ -58,4 +58,25 @@ export const nodeCodec: ImageCodec = {
     const bytes = new Uint8Array(await canvas.encode("jpeg", Math.round(quality * 100)));
     return { bytes, width, height };
   },
+
+  async encodeJpeg(pixels, { width, height, channels }, { quality, maxDimension }) {
+    const source = createCanvas(width, height);
+    const ctx = source.getContext("2d");
+    const image = ctx.createImageData(width, height);
+    for (let i = 0; i < width * height; i++) {
+      const o = i * channels;
+      image.data[i * 4] = pixels[o]!;
+      image.data[i * 4 + 1] = pixels[channels === 3 ? o + 1 : o]!;
+      image.data[i * 4 + 2] = pixels[channels === 3 ? o + 2 : o]!;
+      image.data[i * 4 + 3] = 255;
+    }
+    ctx.putImageData(image, 0, 0);
+    const scale = Math.min(1, maxDimension / Math.max(width, height));
+    const w = Math.max(1, Math.round(width * scale));
+    const h = Math.max(1, Math.round(height * scale));
+    const canvas = createCanvas(w, h);
+    canvas.getContext("2d").drawImage(source, 0, 0, w, h);
+    const bytes = new Uint8Array(await canvas.encode("jpeg", Math.round(quality * 100)));
+    return { bytes, width: w, height: h };
+  },
 };

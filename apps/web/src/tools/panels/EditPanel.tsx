@@ -4,6 +4,8 @@ import {
   ChevronLeft,
   ChevronRight,
   Eraser,
+  Link as LinkIcon,
+  TextCursorInput,
   Highlighter,
   ImagePlus,
   LoaderCircle,
@@ -37,7 +39,16 @@ type Item =
   | { id: string; kind: "image"; box: Box; image: PreparedImage; url: string }
   | { id: string; kind: "whiteout"; box: Box; color: Color }
   | { id: string; kind: "highlight"; box: Box; color: Color; comment: string }
-  | { id: string; kind: "note"; box: Box; text: string; color: Color };
+  | { id: string; kind: "note"; box: Box; text: string; color: Color }
+  | { id: string; kind: "link"; box: Box; url: string; page: number | null }
+  | {
+      id: string;
+      kind: "field";
+      box: Box;
+      field: "text" | "multiline" | "checkbox" | "dropdown";
+      name: string;
+      options: string;
+    };
 
 const css = (c: Color) => `rgb(${c.map((v) => Math.round(v * 255)).join(" ")})`;
 
@@ -68,8 +79,8 @@ export function EditPanel() {
   return (
     <PanelSection>
       <Hint>
-        Add text and images, cover things up with whiteout, highlight passages, or leave sticky
-        notes. You can move between pages in the editor.
+        Add text and images, cover things up with whiteout, highlight passages, leave sticky notes,
+        add links, or create fillable form fields. You can move between pages in the editor.
       </Hint>
       <Hint>
         Whiteout only hides what's underneath; the original text is still in the file. Don't use it
@@ -288,6 +299,33 @@ function PageEditor({ startIndex, onClose }: { startIndex: number; onClose: () =
               })
             }
           />
+          <ToolButton
+            icon={<LinkIcon className="size-4" />}
+            label="Link"
+            onClick={() =>
+              add({
+                id: uid(),
+                kind: "link",
+                box: { x: 0.1, y: 0.45, width: 0.3, height: 0.03 },
+                url: "",
+                page: null,
+              })
+            }
+          />
+          <ToolButton
+            icon={<TextCursorInput className="size-4" />}
+            label="Field"
+            onClick={() =>
+              add({
+                id: uid(),
+                kind: "field",
+                box: { x: 0.1, y: 0.55, width: 0.4, height: 0.035 },
+                field: "text",
+                name: `field_${total + 1}`,
+                options: "",
+              })
+            }
+          />
           <div className="ml-auto flex gap-2">
             <Button onClick={onClose}>Cancel</Button>
             <Button variant="primary" disabled={total === 0} onClick={apply}>
@@ -300,6 +338,7 @@ function PageEditor({ startIndex, onClose }: { startIndex: number; onClose: () =
                 item={selected}
                 onChange={(patch) => updateItem(selected.id, patch)}
                 textHeight={textHeight}
+                pageCount={pages.length}
               />
               <Button variant="ghost" className="ml-auto" onClick={() => remove(selected.id)}>
                 <Trash className="size-4" /> Remove
@@ -393,6 +432,18 @@ function ItemView({ item, ptToPx }: { item: Item; ptToPx: number }) {
           style={{ background: css(item.color) }}
         />
       );
+    case "link":
+      return (
+        <div className="flex size-full items-center justify-center border-2 border-dashed border-[#1a4fd0] bg-[#1a4fd0]/10">
+          <LinkIcon className="size-3.5 text-[#1a4fd0]" aria-hidden />
+        </div>
+      );
+    case "field":
+      return (
+        <div className="flex size-full items-center overflow-hidden border border-ink bg-[#dbe6ff]/70 px-1 text-[10px] leading-none text-ink">
+          {item.field === "checkbox" ? "☐" : item.name}
+        </div>
+      );
     case "note":
       return (
         <div
@@ -439,10 +490,12 @@ function ItemProperties({
   item,
   onChange,
   textHeight,
+  pageCount,
 }: {
   item: Item;
   onChange: (patch: Partial<Item>) => void;
   textHeight: (text: string, fontSize: number) => number;
+  pageCount: number;
 }) {
   const small = `${inputClass} w-auto py-1`;
   switch (item.kind) {
@@ -545,6 +598,75 @@ function ItemProperties({
       );
     case "image":
       return <span className="text-sm text-ink-2">Drag the corners to resize.</span>;
+    case "link":
+      return (
+        <>
+          <select
+            aria-label="Link to"
+            value={item.page === null ? "url" : "page"}
+            onChange={(e) => onChange({ page: e.target.value === "page" ? 0 : null })}
+            className={small}
+          >
+            <option value="url">Web address</option>
+            <option value="page">Page</option>
+          </select>
+          {item.page === null ? (
+            <input
+              aria-label="Web address"
+              autoFocus
+              placeholder="example.com"
+              value={item.url}
+              onChange={(e) => onChange({ url: e.target.value })}
+              className={`${inputClass} min-w-48 flex-1 py-1`}
+            />
+          ) : (
+            <select
+              aria-label="Page"
+              value={item.page}
+              onChange={(e) => onChange({ page: Number(e.target.value) })}
+              className={small}
+            >
+              {Array.from({ length: pageCount }, (_, i) => (
+                <option key={i} value={i}>
+                  Page {i + 1}
+                </option>
+              ))}
+            </select>
+          )}
+          <span className="text-sm text-ink-2">Place the box over the text to click.</span>
+        </>
+      );
+    case "field":
+      return (
+        <>
+          <select
+            aria-label="Field type"
+            value={item.field}
+            onChange={(e) => onChange({ field: e.target.value as typeof item.field })}
+            className={small}
+          >
+            <option value="text">Text</option>
+            <option value="multiline">Text (several lines)</option>
+            <option value="checkbox">Checkbox</option>
+            <option value="dropdown">Dropdown</option>
+          </select>
+          <input
+            aria-label="Field name"
+            value={item.name}
+            onChange={(e) => onChange({ name: e.target.value })}
+            className={`${inputClass} w-36 py-1`}
+          />
+          {item.field === "dropdown" && (
+            <input
+              aria-label="Choices, separated by commas"
+              placeholder="Choices, separated by commas"
+              value={item.options}
+              onChange={(e) => onChange({ options: e.target.value })}
+              className={`${inputClass} min-w-48 flex-1 py-1`}
+            />
+          )}
+        </>
+      );
   }
 }
 
@@ -577,5 +699,17 @@ function toEdit(item: Item): EditObject {
       };
     case "note":
       return { kind: "note", box: item.box, text: item.text, color: item.color };
+    case "link":
+      return item.page === null
+        ? { kind: "link", box: item.box, url: item.url.trim() }
+        : { kind: "link", box: item.box, pageIndex: item.page };
+    case "field":
+      return {
+        kind: "field",
+        box: item.box,
+        field: item.field,
+        name: item.name,
+        options: item.options.split(","),
+      };
   }
 }

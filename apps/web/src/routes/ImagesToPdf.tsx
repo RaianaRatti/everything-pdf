@@ -14,6 +14,7 @@ import { engine } from "../lib/engine";
 import { ensurePdfExtension, isImageFile, pluralize, uid } from "../lib/files";
 import { prepareImage, type PreparedImage } from "../lib/images";
 import { useWorkspace } from "../store/workspace";
+import { findTool } from "../tools/registry";
 
 interface Item extends PreparedImage {
   id: string;
@@ -33,7 +34,7 @@ export function ImagesToPdf() {
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   useEffect(() => {
-    document.title = "Images to PDF · Everything PDF";
+    document.title = "Images to PDF · everything-pdf";
   }, []);
 
   // Release preview URLs when the page goes away.
@@ -102,7 +103,12 @@ export function ImagesToPdf() {
       {items.length === 0 ? (
         <main className="flex-1 p-4 sm:p-8">
           <div className="mx-auto max-w-2xl pt-4 sm:pt-16">
-            <Dropzone onFiles={(f) => void add(f)} accept="image/*" title="drop images here" />
+            <Dropzone
+              onFiles={(f) => void add(f)}
+              accept="image/*"
+              title="drop images here"
+              subtitle={findTool("images-to-pdf")?.description}
+            />
           </div>
         </main>
       ) : (

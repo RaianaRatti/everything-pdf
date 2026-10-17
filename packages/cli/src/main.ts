@@ -2,10 +2,32 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { basename, extname, join, resolve } from "node:path";
 import { parseArgs, type ParseArgsConfig } from "node:util";
 import {
+  REDACTION_PATTERNS,
   addPageNumbers,
+  addWatermark,
   assemble,
+  booklet,
   compress,
   compressPresets,
+  decryptPdf,
+  encryptPdf,
+  extractImages,
+  findMatches,
+  keepOutside,
+  linearizePdf,
+  literalPattern,
+  nUp,
+  poster,
+  readOutline,
+  recolorPdf,
+  redactPages,
+  repairPdf,
+  signPdfDigitally,
+  splitSpreads,
+  verifySignatures,
+  type NUpOptions,
+  type PaperSize,
+  type RedactionPattern,
   extractGroups,
   imagesToPdf,
   loadPdf,
@@ -20,7 +42,7 @@ import {
   type SplitMode,
 } from "@everything-pdf/engine";
 import { nodeCodec, prepareImage } from "./images";
-import { renderPages } from "./render";
+import { renderPages, textRunsOf } from "./render";
 
 export interface Io {
   out(line: string): void;
@@ -122,7 +144,7 @@ function formatSize(n: number): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-const plural = (n: number, word: string) => `${n} ${word}${n === 1 ? "" : "s"}`;
+const plural = (n: number, word: string, many = `${word}s`) => `${n} ${n === 1 ? word : many}`;
 
 /** Writes a file, refusing to clobber any of the command's own inputs. */
 async function write(io: Io, path: string, bytes: Uint8Array, inputs: string[]): Promise<string> {
@@ -155,6 +177,10 @@ function requirePages(values: Values, pageCount: number, verb: string): number[]
   const spec = str(values, "pages");
   if (!spec) throw new UsageError(`Say which pages to ${verb} with --pages, e.g. --pages 1-3,7.`);
   return parsePageRanges(spec, pageCount).flat();
+}
+
+function paper(values: Values): PaperSize {
+  return choice(values, "paper", ["a4", "letter", "a3", "a5", "legal"] as const, "a4");
 }
 
 function rangeLabel(pages: number[]): string {
@@ -390,11 +416,16 @@ const commands: Command[] = [
   {
     name: "compress",
     summary: "Shrink photos and remove unused data",
-    usage: "compress <in.pdf> [--level low|medium|high] [-o out.pdf]",
+    usage: "compress <in.pdf> [--level lossless|low|medium|high] [-o out.pdf]",
     options: { ...output, level: { type: "string" } },
     async run(positionals, values, io) {
       const input = onlyInput(positionals);
-      const level = choice(values, "level", ["low", "medium", "high"] as const, "medium");
+      const level = choice(
+        values,
+        "level",
+        ["lossless", "low", "medium", "high"] as const,
+        "medium",
+      );
       const result = await compress(await read(io, input), compressPresets[level], nodeCodec);
       if (result.newSize >= result.originalSize) {
         io.out(
@@ -472,6 +503,365 @@ const commands: Command[] = [
         margin: pageSize === "fit" ? 0 : number(values, "margin", 18, { min: 0, max: 200 }),
       });
       await writePdf(io, str(values, "output") ?? "images.pdf", out, inputs);
+    },
+  },
+  {
+    name: "dark",
+    summary: "Dark mode that keeps text selectable (or a true negative with --negative)",
+    usage: "dark <in.pdf> [--negative] [--invert-images] [--pages 1-3] [-o out.pdf]",
+    options: {
+      ...output,
+      ...pages,
+      negative: { type: "boolean" },
+      "invert-images": { type: "boolean" },
+    },
+    async run(positionals, values, io) {
+      const input = onlyInput(positionals);
+      const bytes = await read(io, input);
+      const negative = values.negative === true;
+      const out = await recolorPdf(bytes, {
+        mode: negative ? "invert" : "smart",
+        keepImages: values["invert-images"] !== true,
+        pages: selectPages(values, await pageCountOf(bytes)),
+      });
+      await writePdf(io, str(values, "output") ?? `${stem(input)}-dark.pdf`, out, [input]);
+    },
+  },
+  {
+    name: "redact",
+    summary: "Permanently black out text (redacted pages become images)",
+    usage:
+      "redact <in.pdf> [--find text]… [--pattern email,phone,ssn,cpf,card,iban,date]\n" +
+      "                 [--dpi 200] [-o out.pdf]",
+    options: {
+      ...output,
+      find: { type: "string", multiple: true },
+      pattern: { type: "string" },
+      dpi: { type: "string" },
+    },
+    async run(positionals, values, io) {
+      const input = onlyInput(positionals);
+      const finds = (values.find as unknown as string[] | undefined) ?? [];
+      const names = (str(values, "pattern") ?? "")
+        .split(",")
+        .map((p) => p.trim())
+        .filter(Boolean);
+      for (const name of names) {
+        if (!(name in REDACTION_PATTERNS)) {
+          throw new UsageError(
+            `Unknown pattern "${name}". Use: ${Object.keys(REDACTION_PATTERNS).join(", ")}.`,
+          );
+        }
+      }
+      const regexes = [
+        ...finds.map((f) => literalPattern(f)),
+        ...names.map((n) => REDACTION_PATTERNS[n as RedactionPattern].regex),
+      ];
+      if (regexes.length === 0)
+        throw new UsageError("Say what to redact with --find or --pattern.");
+      const dpi = number(values, "dpi", 200, { min: 72, max: 600 });
+      const bytes = await read(io, input);
+      const runs = await textRunsOf(bytes);
+      const boxes = runs.map((pageRuns) => regexes.flatMap((r) => findMatches(pageRuns, r)));
+      const targets = boxes.flatMap((b, i) => (b.length ? [i] : []));
+      if (targets.length === 0) {
+        io.out("Nothing matched; nothing written. (Scanned pages have no text: run OCR first.)");
+        return;
+      }
+      const images = await renderPages(
+        bytes,
+        targets,
+        {
+          dpi,
+          format: "jpg",
+          quality: 0.9,
+          paint: (ctx, width, height, i) => {
+            ctx.fillStyle = "#000";
+            for (const b of boxes[targets[i]!]!) {
+              ctx.fillRect(b.x * width, b.y * height, b.width * width, b.height * height);
+            }
+          },
+        },
+        (done, total) => io.progress(`redacting page ${Math.min(done + 1, total)}/${total}`),
+      );
+      const out = await redactPages(
+        bytes,
+        targets.map((pageIndex, i) => ({
+          pageIndex,
+          bytes: images[i]!,
+          type: "jpg" as const,
+          words: keepOutside(runs[pageIndex]!, boxes[pageIndex]!).filter((r) => !r.vertical),
+        })),
+      );
+      const total = targets.reduce((n, i) => n + boxes[i]!.length, 0);
+      io.out(`redacted ${plural(total, "match", "matches")} on ${plural(targets.length, "page")}`);
+      await writePdf(io, str(values, "output") ?? `${stem(input)}-redacted.pdf`, out, [input]);
+    },
+  },
+  {
+    name: "watermark",
+    summary: "Stamp text across every page",
+    usage: "watermark <in.pdf> --text DRAFT [--across] [--opacity 0.2] [-o out.pdf]",
+    options: {
+      ...output,
+      text: { type: "string" },
+      across: { type: "boolean" },
+      opacity: { type: "string" },
+    },
+    async run(positionals, values, io) {
+      const input = onlyInput(positionals);
+      const text = str(values, "text");
+      if (!text) throw new UsageError("Give the watermark text with --text.");
+      const out = await addWatermark(await read(io, input), {
+        text,
+        layout: values.across === true ? "horizontal" : "diagonal",
+        opacity: number(values, "opacity", 0.2, { min: 0.02, max: 1 }),
+      });
+      await writePdf(io, str(values, "output") ?? `${stem(input)}-watermarked.pdf`, out, [input]);
+    },
+  },
+  {
+    name: "nup",
+    summary: "Put several pages on each sheet",
+    usage: "nup <in.pdf> [--per 2|4|6|9|16] [--paper a4|letter|a3] [--borders] [-o out.pdf]",
+    options: {
+      ...output,
+      per: { type: "string" },
+      paper: { type: "string" },
+      borders: { type: "boolean" },
+    },
+    async run(positionals, values, io) {
+      const input = onlyInput(positionals);
+      const per = Number(choice(values, "per", ["2", "4", "6", "9", "16"] as const, "2"));
+      const out = await nUp(await read(io, input), {
+        perSheet: per as NUpOptions["perSheet"],
+        size: paper(values),
+        margin: 18,
+        gap: 12,
+        borders: values.borders === true,
+      });
+      await writePdf(io, str(values, "output") ?? `${stem(input)}-${per}up.pdf`, out, [input]);
+    },
+  },
+  {
+    name: "booklet",
+    summary: "Arrange pages to print double-sided and fold into a booklet",
+    usage: "booklet <in.pdf> [--paper a4|letter|a3] [-o out.pdf]",
+    options: { ...output, paper: { type: "string" } },
+    async run(positionals, values, io) {
+      const input = onlyInput(positionals);
+      const out = await booklet(await read(io, input), { size: paper(values), margin: 12 });
+      await writePdf(io, str(values, "output") ?? `${stem(input)}-booklet.pdf`, out, [input]);
+      io.out('print double-sided with "flip on short edge", then fold in half');
+    },
+  },
+  {
+    name: "poster",
+    summary: "Enlarge one page across several sheets",
+    usage:
+      "poster <in.pdf> [--page 1] [--grid 2x2] [--paper a4|letter|a3] [--no-overlap] [-o out.pdf]",
+    options: {
+      ...output,
+      page: { type: "string" },
+      grid: { type: "string" },
+      paper: { type: "string" },
+      "no-overlap": { type: "boolean" },
+    },
+    async run(positionals, values, io) {
+      const input = onlyInput(positionals);
+      const bytes = await read(io, input);
+      const page = number(values, "page", 1, {
+        min: 1,
+        max: await pageCountOf(bytes),
+        integer: true,
+      });
+      const grid = /^(\d)x(\d)$/.exec(str(values, "grid") ?? "2x2");
+      if (!grid) throw new UsageError('--grid looks like "2x2" (across x down).');
+      const out = await poster(bytes, {
+        pageIndex: page - 1,
+        columns: Number(grid[1]),
+        rows: Number(grid[2]),
+        size: paper(values),
+        overlap: values["no-overlap"] === true ? 0 : 28,
+      });
+      await writePdf(io, str(values, "output") ?? `${stem(input)}-poster.pdf`, out, [input]);
+    },
+  },
+  {
+    name: "split-spreads",
+    summary: "Cut two-page scans (open books) into single pages",
+    usage: "split-spreads <in.pdf> [--horizontal] [--rtl] [-o out.pdf]",
+    options: { ...output, horizontal: { type: "boolean" }, rtl: { type: "boolean" } },
+    async run(positionals, values, io) {
+      const input = onlyInput(positionals);
+      const out = await splitSpreads(await read(io, input), {
+        direction: values.horizontal === true ? "horizontal" : "vertical",
+        rightToLeft: values.rtl === true,
+      });
+      await writePdf(io, str(values, "output") ?? `${stem(input)}-split.pdf`, out, [input]);
+    },
+  },
+  {
+    name: "protect",
+    summary: "Encrypt with a password (AES-256) and/or restrict printing, copying, editing",
+    usage:
+      "protect <in.pdf> [--password pw] [--owner-password pw] [--no-print] [--no-copy] [--no-edit]\n" +
+      "                  [-o out.pdf]",
+    options: {
+      ...output,
+      password: { type: "string" },
+      "owner-password": { type: "string" },
+      "no-print": { type: "boolean" },
+      "no-copy": { type: "boolean" },
+      "no-edit": { type: "boolean" },
+    },
+    async run(positionals, values, io) {
+      const input = onlyInput(positionals);
+      const out = await encryptPdf(await read(io, input), {
+        userPassword: str(values, "password") ?? "",
+        ownerPassword: str(values, "owner-password") ?? "",
+        allowPrinting: values["no-print"] !== true,
+        allowCopying: values["no-copy"] !== true,
+        allowEditing: values["no-edit"] !== true,
+      });
+      const path = str(values, "output") ?? `${stem(input)}-protected.pdf`;
+      await write(io, path, out, [input]);
+      io.out(`wrote ${path} (${formatSize(out.length)}, encrypted)`);
+    },
+  },
+  {
+    name: "unlock",
+    summary: "Remove a PDF's password (you need to know it) and its restrictions",
+    usage: "unlock <in.pdf> [--password pw] [-o out.pdf]",
+    options: { ...output, password: { type: "string" } },
+    async run(positionals, values, io) {
+      const input = onlyInput(positionals);
+      const out = await decryptPdf(await read(io, input), str(values, "password") ?? "");
+      await writePdf(io, str(values, "output") ?? `${stem(input)}-unlocked.pdf`, out, [input]);
+    },
+  },
+  {
+    name: "repair",
+    summary: "Rebuild a damaged PDF",
+    usage: "repair <in.pdf> [-o out.pdf]",
+    options: { ...output },
+    async run(positionals, values, io) {
+      const input = onlyInput(positionals);
+      const out = await repairPdf(await read(io, input));
+      await writePdf(io, str(values, "output") ?? `${stem(input)}-repaired.pdf`, out, [input]);
+    },
+  },
+  {
+    name: "web",
+    summary: 'Optimize for fast web view ("linearize")',
+    usage: "web <in.pdf> [-o out.pdf]",
+    options: { ...output },
+    async run(positionals, values, io) {
+      const input = onlyInput(positionals);
+      const out = await linearizePdf(await read(io, input));
+      await writePdf(io, str(values, "output") ?? `${stem(input)}-web.pdf`, out, [input]);
+    },
+  },
+  {
+    name: "extract-images",
+    summary: "Save embedded photos and graphics at their original quality",
+    usage: "extract-images <in.pdf> [-o out-dir]",
+    options: { ...output },
+    async run(positionals, values, io) {
+      const input = onlyInput(positionals);
+      const { images, skipped } = await extractImages(await read(io, input));
+      const dir = str(values, "output") ?? `${stem(input)}-images`;
+      await mkdir(resolve(io.cwd, dir), { recursive: true });
+      const perPage = new Map<number, number>();
+      for (const image of images) {
+        const n = (perPage.get(image.page) ?? 0) + 1;
+        perPage.set(image.page, n);
+        await write(io, join(dir, `page-${image.page}-image-${n}.${image.ext}`), image.bytes, [
+          input,
+        ]);
+      }
+      io.out(
+        `wrote ${plural(images.length, "image")} to ${dir}/` +
+          (skipped ? ` (${skipped} in unsupported formats skipped)` : ""),
+      );
+    },
+  },
+  {
+    name: "sign-cert",
+    summary: "Digitally sign with a certificate (.p12/.pfx)",
+    usage:
+      "sign-cert <in.pdf> --cert id.p12 [--password pw] [--reason text] [--location text]\n" +
+      "                    [--visible] [-o out.pdf]",
+    options: {
+      ...output,
+      cert: { type: "string" },
+      password: { type: "string" },
+      reason: { type: "string" },
+      location: { type: "string" },
+      visible: { type: "boolean" },
+    },
+    async run(positionals, values, io) {
+      const input = onlyInput(positionals);
+      const cert = str(values, "cert");
+      if (!cert) throw new UsageError("Give the certificate file with --cert.");
+      const bytes = await read(io, input);
+      const out = await signPdfDigitally(bytes, {
+        p12: await read(io, cert),
+        password: str(values, "password") ?? "",
+        reason: str(values, "reason"),
+        location: str(values, "location"),
+        appearance:
+          values.visible === true
+            ? {
+                pageIndex: (await pageCountOf(bytes)) - 1,
+                box: { x: 0.52, y: 0.84, width: 0.43, height: 0.1 },
+              }
+            : undefined,
+      });
+      const path = str(values, "output") ?? `${stem(input)}-signed.pdf`;
+      await write(io, path, out, [input, cert]);
+      io.out(`wrote ${path} (signed)`);
+    },
+  },
+  {
+    name: "verify",
+    summary: "Check digital signatures",
+    usage: "verify <in.pdf>",
+    options: {},
+    async run(positionals, _values, io) {
+      const input = onlyInput(positionals);
+      const reports = await verifySignatures(await read(io, input));
+      if (reports.length === 0) {
+        io.out("no digital signatures");
+        return;
+      }
+      let bad = false;
+      for (const r of reports) {
+        const ok = r.intact && r.validSignature;
+        bad ||= !ok;
+        io.out(
+          `${ok ? "valid" : "INVALID"}: signed by ${r.signer}${r.signedAt ? ` on ${r.signedAt}` : ""}`,
+        );
+        if (!r.intact) io.out("  the document changed after signing");
+        if (!r.validSignature) io.out("  the signature doesn't match the certificate");
+        if (!r.coversWholeFile) io.out("  more was added to the file after this signature");
+        io.out(`  certificate: ${r.selfSigned ? "self-signed" : `issued by ${r.issuer}`}`);
+        if (r.problem) io.out(`  ${r.problem}`);
+      }
+      if (bad) throw new Error("at least one signature is invalid.");
+    },
+  },
+  {
+    name: "bookmarks",
+    summary: "List the document's bookmarks",
+    usage: "bookmarks <in.pdf>",
+    options: {},
+    async run(positionals, _values, io) {
+      const input = onlyInput(positionals);
+      const outline = readOutline(await loadPdf(await read(io, input)));
+      if (outline.length === 0) io.out("no bookmarks");
+      for (const b of outline)
+        io.out(`${"  ".repeat(b.level)}${b.title}  (page ${b.pageIndex + 1})`);
     },
   },
   {

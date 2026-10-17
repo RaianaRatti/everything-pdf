@@ -3,9 +3,12 @@ export interface CompressOptions {
   quality: number;
   /** Images larger than this (in pixels, on the longer side) are downscaled. */
   maxDimension: number;
+  /** Re-encode images (lossy). Off for lossless compression. Default on. */
+  images?: boolean;
 }
 
 export const compressPresets = {
+  lossless: { quality: 1, maxDimension: Number.MAX_SAFE_INTEGER, images: false },
   low: { quality: 0.85, maxDimension: 3000 },
   medium: { quality: 0.7, maxDimension: 2000 },
   high: { quality: 0.5, maxDimension: 1400 },

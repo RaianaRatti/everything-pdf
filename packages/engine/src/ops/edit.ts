@@ -44,7 +44,17 @@ export type EditObject =
   /** A real highlight annotation, so other PDF apps list it as a comment. */
   | { kind: "highlight"; box: Box; color: Color; comment?: string }
   /** A sticky note; only the box's top-left corner is used. */
-  | { kind: "note"; box: Box; text: string; color: Color };
+  | { kind: "note"; box: Box; text: string; color: Color }
+  /** A clickable area that opens a web address or jumps to a page (0-based). */
+  | { kind: "link"; box: Box; url?: string; pageIndex?: number }
+  /** A new fillable form field. Names must be unique; a number is added if one is taken. */
+  | {
+      kind: "field";
+      box: Box;
+      field: "text" | "multiline" | "checkbox" | "dropdown";
+      name: string;
+      options?: string[];
+    };
 
 export interface PageEdits {
   pageIndex: number;
@@ -109,6 +119,77 @@ async function applyObject(doc: PDFDocument, page: PDFPage, object: EditObject):
       return addHighlight(doc, page, object);
     case "note":
       return addNote(doc, page, object);
+    case "link":
+      return addLink(doc, page, object);
+    case "field":
+      return addField(doc, page, object);
+  }
+}
+
+function addLink(
+  doc: PDFDocument,
+  page: PDFPage,
+  object: Extract<EditObject, { kind: "link" }>,
+): void {
+  const r = pageRect(page, object.box);
+  const annot = doc.context.obj({
+    Type: "Annot",
+    Subtype: "Link",
+    Rect: [r.x, r.y, r.x + r.width, r.y + r.height].map(num),
+    Border: [0, 0, 0],
+    F: 4,
+    P: page.ref,
+  }) as PDFDict;
+  if (object.url) {
+    const url = /^[a-z][a-z0-9+.-]*:/i.test(object.url) ? object.url : `https://${object.url}`;
+    annot.set(PDFName.of("A"), doc.context.obj({ S: "URI", URI: PDFString.of(url) }));
+  } else if (object.pageIndex !== undefined) {
+    if (object.pageIndex < 0 || object.pageIndex >= doc.getPageCount()) {
+      throw new PdfEngineError("bad-input", `Page ${object.pageIndex + 1} doesn't exist.`);
+    }
+    annot.set(
+      PDFName.of("Dest"),
+      doc.context.obj([doc.getPage(object.pageIndex).ref, PDFName.of("Fit")]),
+    );
+  } else {
+    throw new PdfEngineError("bad-input", "A link needs a web address or a page.");
+  }
+  addAnnotation(doc, page, annot);
+}
+
+function addField(
+  doc: PDFDocument,
+  page: PDFPage,
+  object: Extract<EditObject, { kind: "field" }>,
+): void {
+  const form = doc.getForm();
+  const base = object.name.trim().replace(/\./g, "_") || "field";
+  let name = base;
+  for (let i = 2; form.getFieldMaybe(name); i++) name = `${base}_${i}`;
+  const r = pageRect(page, object.box);
+  const frame = visualFrame(page);
+  const placement = { ...r, rotate: degrees(frame.rotation), borderWidth: 1 };
+  switch (object.field) {
+    case "text":
+    case "multiline": {
+      const field = form.createTextField(name);
+      if (object.field === "multiline") field.enableMultiline();
+      field.addToPage(page, placement);
+      break;
+    }
+    case "checkbox":
+      form.createCheckBox(name).addToPage(page, placement);
+      break;
+    case "dropdown": {
+      const field = form.createDropdown(name);
+      const options = (object.options ?? []).map((o) => o.trim()).filter(Boolean);
+      if (options.length === 0) {
+        throw new PdfEngineError("bad-input", `The dropdown “${name}” needs at least one option.`);
+      }
+      field.addOptions(options);
+      field.addToPage(page, placement);
+      break;
+    }
   }
 }
 

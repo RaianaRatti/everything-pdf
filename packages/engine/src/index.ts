@@ -21,7 +21,25 @@ export { inspectDetails, type PdfDetails } from "./ops/details";
 export { blankPdf } from "./ops/blank";
 export { extractImages, type ExtractImagesResult, type ExtractedImage } from "./ops/extractImages";
 export { addTextLayer, type OcrWord, type PageText } from "./ops/textLayer";
-export { decryptPdf, encryptPdf, setQpdfWasmUrl, type EncryptOptions } from "./ops/security";
+export {
+  decryptPdf,
+  encryptPdf,
+  linearizePdf,
+  optimizeStructure,
+  repairPdf,
+  setQpdfWasmUrl,
+  type EncryptOptions,
+} from "./ops/security";
+export { recolorPdf, type RecolorOptions } from "./ops/recolor";
+export { redactPages, type RedactedPage } from "./ops/redact";
+export { booklet, bookletOrder, nUp, poster, splitSpreads, type NUpOptions } from "./ops/layout";
+export { readOutline, writeOutline, type Bookmark } from "./outline";
+export {
+  signPdfDigitally,
+  verifySignatures,
+  type DigitalSignOptions,
+  type SignatureReport,
+} from "./ops/signature";
 export { encodePng } from "./png";
 export {
   imagesToPdf,

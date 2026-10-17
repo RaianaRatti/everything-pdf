@@ -1,15 +1,17 @@
 import { compressPresets } from "@everything-pdf/engine/pure";
-import { Minimize2 } from "lucide-react";
+import { Gauge, Minimize2 } from "lucide-react";
 import { useState } from "react";
-import { materialize, runTask } from "../../lib/actions";
+import { materialize, runTask, sourceFromBytes } from "../../lib/actions";
 import { engine } from "../../lib/engine";
-import { formatBytes, uid } from "../../lib/files";
+import { downloadBytes } from "../../lib/download";
+import { baseName, ensurePdfExtension, formatBytes } from "../../lib/files";
 import { useWorkspace } from "../../store/workspace";
-import { Button, PanelSection } from "../../components/ui";
+import { Button, Hint, PanelSection } from "../../components/ui";
 
 type Preset = keyof typeof compressPresets;
 
 const PRESETS: { value: Preset; label: string; description: string }[] = [
+  { value: "lossless", label: "Lossless", description: "Same quality; repacks the file only" },
   { value: "low", label: "Light", description: "Best quality, modest savings" },
   { value: "medium", label: "Balanced", description: "Good quality, good savings" },
   { value: "high", label: "Strong", description: "Smallest file, lower image quality" },
@@ -30,9 +32,7 @@ export function CompressPanel() {
         );
         return;
       }
-      const { pageCount } = await engine.inspect(r.bytes);
-      const ws = useWorkspace.getState();
-      ws.replaceDocument({ id: uid(), name: ws.outputName, bytes: r.bytes, pageCount });
+      useWorkspace.getState().replaceDocument(await sourceFromBytes(r.bytes));
       const saved = Math.round((1 - r.newSize / r.originalSize) * 100);
       setResult(
         `Reduced from ${formatBytes(r.originalSize)} to ${formatBytes(r.newSize)} (${saved}% smaller).`,
@@ -66,6 +66,24 @@ export function CompressPanel() {
           <Minimize2 className="size-4" /> Compress
         </Button>
         {result && <p className="text-sm text-ink">{result}</p>}
+      </PanelSection>
+      <PanelSection title="For the web">
+        <Hint>
+          Downloads a copy reordered so browsers can show the first page while the rest is still
+          loading (“fast web view”). Useful for big files you put online.
+        </Hint>
+        <Button
+          className="w-full"
+          onClick={() =>
+            void runTask("Optimizing for the web…", async () => {
+              const ws = useWorkspace.getState();
+              const bytes = await engine.linearize(await materialize());
+              downloadBytes(bytes, `${baseName(ensurePdfExtension(ws.outputName))}-web.pdf`);
+            })
+          }
+        >
+          <Gauge className="size-4" /> Download for fast web view
+        </Button>
       </PanelSection>
     </>
   );

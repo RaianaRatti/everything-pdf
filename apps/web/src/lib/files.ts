@@ -29,6 +29,6 @@ export function formatBytes(n: number): string {
   return `${(n / 1024 / 1024).toFixed(1)} MB`;
 }
 
-export function pluralize(n: number, word: string): string {
-  return `${n} ${word}${n === 1 ? "" : "s"}`;
+export function pluralize(n: number, word: string, plural = `${word}s`): string {
+  return `${n} ${n === 1 ? word : plural}`;
 }

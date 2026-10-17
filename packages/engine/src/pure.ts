@@ -29,3 +29,27 @@ export {
   type WatermarkLayout,
 } from "./presets";
 export type { FontFamily } from "./text";
+export {
+  REDACTION_PATTERNS,
+  findMatches,
+  keepOutside,
+  literalPattern,
+  type RedactBox,
+  type RedactionPattern,
+  type TextRun,
+} from "./redact";
+export {
+  applyHomography,
+  detectDocument,
+  enhanceScan,
+  flattenedSize,
+  homography,
+  otsuThreshold,
+  toGray,
+  warpPerspective,
+  type Point,
+  type Quad,
+  type ScanFilter,
+} from "./scan";
+export { diffWords, type DiffPart } from "./diff";
+export type { Bookmark } from "./outline";

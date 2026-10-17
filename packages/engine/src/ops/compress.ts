@@ -11,6 +11,8 @@ import {
 } from "pdf-lib";
 import { loadPdf } from "../load";
 import type { CompressOptions } from "../presets";
+import { decodeSamples } from "./extractImages";
+import { optimizeStructure } from "./security";
 
 /**
  * Re-encodes JPEG image data. The engine doesn't decode images itself, so the host supplies a
@@ -19,6 +21,12 @@ import type { CompressOptions } from "../presets";
 export interface ImageCodec {
   reencodeJpeg(
     jpeg: Uint8Array,
+    options: { quality: number; maxDimension: number },
+  ): Promise<{ bytes: Uint8Array; width: number; height: number } | null>;
+  /** Encodes raw 8-bit gray (1 channel) or RGB (3) pixels as JPEG. Optional. */
+  encodeJpeg?(
+    pixels: Uint8Array,
+    size: { width: number; height: number; channels: 1 | 3 },
     options: { quality: number; maxDimension: number },
   ): Promise<{ bytes: Uint8Array; width: number; height: number } | null>;
 }
@@ -104,6 +112,73 @@ export function removeUnreferencedObjects(doc: PDFDocument): number {
   return removed;
 }
 
+/**
+ * Photos stored losslessly (Flate) are often far bigger than they need to be. Re-encode those
+ * that look like photos (many distinct colors) as JPEG when that's clearly smaller; leave
+ * line art, screenshots and diagrams alone, since JPEG would blur their edges.
+ */
+async function recompressLosslessPhotos(
+  doc: PDFDocument,
+  options: CompressOptions,
+  codec: ImageCodec,
+): Promise<number> {
+  let count = 0;
+  for (const [ref, obj] of doc.context.enumerateIndirectObjects()) {
+    if (!(obj instanceof PDFRawStream)) continue;
+    const dict = obj.dict;
+    if (dict.get(N.Subtype) !== N.Image || dict.get(N.ImageMask)) continue;
+    const filter = dict.get(N.Filter);
+    if (filter && filter !== PDFName.of("FlateDecode")) continue;
+    const width = dict.get(N.Width);
+    const height = dict.get(N.Height);
+    if (!(width instanceof PDFNumber && height instanceof PDFNumber)) continue;
+    const w = width.asNumber();
+    const h = height.asNumber();
+    if (w * h < 200 * 200) continue;
+
+    const decoded = decodeSamples(doc, obj, w, h);
+    if (!decoded || !looksLikePhoto(decoded.pixels, decoded.channels)) continue;
+    let result: Awaited<ReturnType<NonNullable<ImageCodec["encodeJpeg"]>>>;
+    try {
+      result = await codec.encodeJpeg!(
+        decoded.pixels,
+        { width: w, height: h, channels: decoded.channels },
+        options,
+      );
+    } catch {
+      continue;
+    }
+    // Only worth it if it saves at least a quarter.
+    if (!result || result.bytes.length > obj.contents.length * 0.75) continue;
+
+    const next = dict.clone(doc.context);
+    next.set(N.Width, PDFNumber.of(result.width));
+    next.set(N.Height, PDFNumber.of(result.height));
+    next.set(N.Filter, N.DCTDecode);
+    next.set(N.ColorSpace, N.DeviceRGB);
+    next.set(N.BitsPerComponent, PDFNumber.of(8));
+    next.delete(N.DecodeParms);
+    next.delete(N.Decode);
+    doc.context.assign(ref, PDFRawStream.of(next, result.bytes));
+    count++;
+  }
+  return count;
+}
+
+/** Many distinct colors in a sample of pixels means a photo; few means graphics or text. */
+function looksLikePhoto(pixels: Uint8Array, channels: 1 | 3): boolean {
+  const total = pixels.length / channels;
+  const step = Math.max(1, Math.floor(total / 4096));
+  const colors = new Set<number>();
+  for (let i = 0; i < total; i += step) {
+    const o = i * channels;
+    colors.add(
+      channels === 1 ? pixels[o]! : (pixels[o]! << 16) | (pixels[o + 1]! << 8) | pixels[o + 2]!,
+    );
+  }
+  return colors.size > (channels === 1 ? 48 : 256);
+}
+
 export async function compress(
   bytes: Uint8Array,
   options: CompressOptions,
@@ -113,6 +188,7 @@ export async function compress(
   let imagesRecompressed = 0;
 
   for (const [ref, obj] of doc.context.enumerateIndirectObjects()) {
+    if (options.images === false) break;
     if (!(obj instanceof PDFRawStream) || !isSafeJpeg(doc, obj.dict)) continue;
 
     let result: Awaited<ReturnType<ImageCodec["reencodeJpeg"]>>;
@@ -134,8 +210,19 @@ export async function compress(
     imagesRecompressed++;
   }
 
+  if (options.images !== false && codec.encodeJpeg) {
+    imagesRecompressed += await recompressLosslessPhotos(doc, options, codec);
+  }
+
   removeUnreferencedObjects(doc);
-  const out = await doc.save({ useObjectStreams: true });
+  let out = await doc.save({ useObjectStreams: true });
+  // Then squeeze the structure: highest-level Flate everywhere, packed objects.
+  try {
+    const optimized = await optimizeStructure(out);
+    if (optimized.length < out.length) out = optimized;
+  } catch {
+    // qpdf couldn't process it; keep pdf-lib's output.
+  }
 
   return out.length < bytes.length
     ? { bytes: out, originalSize: bytes.length, newSize: out.length, imagesRecompressed }

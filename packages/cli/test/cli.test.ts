@@ -196,3 +196,86 @@ describe("conversion", () => {
     expect(io.lines).toContain("size:   400 × 300 pt (1 page)");
   });
 });
+
+describe("advanced commands", () => {
+  it("applies dark mode and keeps text", async () => {
+    expect(await epdf("dark", "b.pdf", "-o", "dark.pdf")).toBe(0);
+    expect(await texts(file("dark.pdf"))).toEqual(["B1", "B2"]);
+  });
+
+  it("redacts matching text so it can't be found anymore", async () => {
+    expect(await epdf("redact", "a.pdf", "--find", "A2", "-o", "red.pdf")).toBe(0);
+    expect(io.lines[0]).toBe("redacted 1 match on 1 page");
+    expect(await texts(file("red.pdf"))).toEqual(["A1", "", "A3"]);
+    expect(Buffer.from(file("red.pdf")).toString("latin1")).not.toContain("A2");
+    expect(await epdf("redact", "a.pdf")).toBe(2);
+    expect(await epdf("redact", "a.pdf", "--pattern", "nonsense")).toBe(2);
+  });
+
+  it("makes n-up sheets, booklets, posters and splits spreads", async () => {
+    expect(await epdf("nup", "a.pdf", "--per", "4", "-o", "n.pdf")).toBe(0);
+    expect((await readPdf(file("n.pdf"))).length).toBe(1);
+    expect(await epdf("booklet", "a.pdf", "-o", "bk.pdf")).toBe(0);
+    expect((await readPdf(file("bk.pdf"))).length).toBe(2);
+    expect(await epdf("poster", "b.pdf", "--grid", "2x1", "-o", "p.pdf")).toBe(0);
+    expect((await readPdf(file("p.pdf"))).length).toBe(2);
+    expect(await epdf("split-spreads", "b.pdf", "-o", "s.pdf")).toBe(0);
+    expect((await readPdf(file("s.pdf"))).length).toBe(4);
+  });
+
+  it("protects and unlocks", async () => {
+    expect(await epdf("protect", "b.pdf", "--password", "pw", "-o", "locked.pdf")).toBe(0);
+    expect(await epdf("info", "locked.pdf")).toBe(1);
+    expect(await epdf("unlock", "locked.pdf", "--password", "bad")).toBe(1);
+    expect(io.errors.at(-1)).toContain("isn't right");
+    expect(await epdf("unlock", "locked.pdf", "--password", "pw", "-o", "open.pdf")).toBe(0);
+    expect(await texts(file("open.pdf"))).toEqual(["B1", "B2"]);
+  });
+
+  it("repairs, linearizes, watermarks and lists bookmarks", async () => {
+    expect(await epdf("repair", "b.pdf", "-o", "r.pdf")).toBe(0);
+    expect(await epdf("web", "b.pdf", "-o", "w.pdf")).toBe(0);
+    expect(Buffer.from(file("w.pdf").subarray(0, 1024)).toString("latin1")).toContain(
+      "/Linearized",
+    );
+    expect(await epdf("watermark", "b.pdf", "--text", "DRAFT", "-o", "wm.pdf")).toBe(0);
+    expect(await texts(file("wm.pdf"))).toEqual(["B1 DRAFT", "B2 DRAFT"]);
+    expect(await epdf("bookmarks", "b.pdf")).toBe(0);
+    expect(io.lines.at(-1)).toBe("no bookmarks");
+  });
+
+  it("signs with a certificate and verifies", async () => {
+    const forge = (await import("node-forge")).default;
+    const keys = forge.pki.rsa.generateKeyPair({ bits: 2048 });
+    const cert = forge.pki.createCertificate();
+    cert.publicKey = keys.publicKey;
+    cert.serialNumber = "02";
+    cert.validity.notBefore = new Date(Date.now() - 86_400_000);
+    cert.validity.notAfter = new Date(Date.now() + 86_400_000);
+    cert.setSubject([{ name: "commonName", value: "CLI Tester" }]);
+    cert.setIssuer([{ name: "commonName", value: "CLI Tester" }]);
+    cert.sign(keys.privateKey, forge.md.sha256.create());
+    const p12 = forge.asn1
+      .toDer(forge.pkcs12.toPkcs12Asn1(keys.privateKey, [cert], "pw"))
+      .getBytes();
+    writeFileSync(join(dir, "id.p12"), Buffer.from(p12, "binary"));
+
+    expect(
+      await epdf(
+        "sign-cert",
+        "b.pdf",
+        "--cert",
+        "id.p12",
+        "--password",
+        "pw",
+        "--visible",
+        "-o",
+        "signed.pdf",
+      ),
+    ).toBe(0);
+    expect(await epdf("verify", "signed.pdf")).toBe(0);
+    expect(io.lines.some((l) => l.startsWith("valid: signed by CLI Tester"))).toBe(true);
+    expect(await epdf("verify", "b.pdf")).toBe(0);
+    expect(io.lines.at(-1)).toBe("no digital signatures");
+  });
+});

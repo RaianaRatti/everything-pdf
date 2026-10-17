@@ -4,11 +4,14 @@ import { applyToDocument } from "../../lib/actions";
 import { engine } from "../../lib/engine";
 import { rasterizePages } from "../../lib/raster";
 import { useWorkspace } from "../../store/workspace";
-import { Button, Field, Hint, PanelSection, Segmented } from "../../components/ui";
+import { Button, Checkbox, Field, Hint, PanelSection, Segmented } from "../../components/ui";
 
 type Scope = "all" | "selected";
 type Dpi = "110" | "150" | "220";
 type Filter = "invert" | "grayscale";
+/** Invert only: "vector" rewrites colors (text stays text), "image" renders pages. */
+type Method = "vector" | "image";
+type Style = "smart" | "invert";
 
 const copy: Record<
   Filter,
@@ -38,11 +41,29 @@ function RecolorPanel({ filter }: { filter: Filter }) {
   const selection = useWorkspace((s) => s.selection);
   const [scope, setScope] = useState<Scope>("all");
   const [dpi, setDpi] = useState<Dpi>("150");
+  const [method, setMethod] = useState<Method>("vector");
+  const [style, setStyle] = useState<Style>("smart");
+  const [keepImages, setKeepImages] = useState(true);
+  const vector = filter === "invert" && method === "vector";
 
   const run = () => {
     const { pages, files, setBusy } = useWorkspace.getState();
     const chosen = new Set(scope === "selected" ? selection : pages.map((p) => p.id));
     const targets = pages.flatMap((p, pageIndex) => (chosen.has(p.id) ? [{ p, pageIndex }] : []));
+
+    if (vector) {
+      void applyToDocument(
+        busy,
+        (bytes) =>
+          engine.recolor(bytes, {
+            mode: style,
+            keepImages,
+            pages: targets.map((t) => t.pageIndex),
+          }),
+        style === "smart" ? "Dark mode applied. Text is still selectable." : done,
+      );
+      return;
+    }
 
     void applyToDocument(
       busy,
@@ -86,22 +107,68 @@ function RecolorPanel({ filter }: { filter: Filter }) {
             ]}
           />
         </Field>
-        <Field label="Quality">
-          <Segmented
-            label="Quality"
-            value={dpi}
-            onChange={setDpi}
-            options={[
-              { value: "110", label: "Smaller" },
-              { value: "150", label: "Standard" },
-              { value: "220", label: "Sharp" },
-            ]}
-          />
-        </Field>
-        <Hint>
-          Converted pages are stored as images, so their text can't be selected or searched
-          afterwards.
-        </Hint>
+        {filter === "invert" && (
+          <Field label="Method">
+            <Segmented
+              label="Method"
+              value={method}
+              onChange={setMethod}
+              options={[
+                { value: "vector", label: "Keep text" },
+                { value: "image", label: "As images" },
+              ]}
+            />
+          </Field>
+        )}
+        {vector ? (
+          <>
+            <Field label="Style">
+              <Segmented
+                label="Style"
+                value={style}
+                onChange={(v) => {
+                  setStyle(v);
+                  setKeepImages(v === "smart");
+                }}
+                options={[
+                  { value: "smart", label: "Dark mode" },
+                  { value: "invert", label: "Negative" },
+                ]}
+              />
+            </Field>
+            <Checkbox
+              checked={keepImages}
+              onChange={setKeepImages}
+              label="Leave photos as they are"
+            />
+            <Hint>
+              {style === "smart"
+                ? "Light backgrounds turn dark and text turns light, but colors keep their hue (red stays red). "
+                : "A true negative: every color is flipped. "}
+              Text stays selectable. Gradients and spot colors aren't changed; if a page looks off,
+              use “As images” instead.
+            </Hint>
+          </>
+        ) : (
+          <>
+            <Field label="Quality">
+              <Segmented
+                label="Quality"
+                value={dpi}
+                onChange={setDpi}
+                options={[
+                  { value: "110", label: "Smaller" },
+                  { value: "150", label: "Standard" },
+                  { value: "220", label: "Sharp" },
+                ]}
+              />
+            </Field>
+            <Hint>
+              Converted pages are stored as images, so their text can't be selected or searched
+              afterwards. Works on any PDF.
+            </Hint>
+          </>
+        )}
         <Button variant="primary" className="w-full" disabled={disabled} onClick={run}>
           <Icon className="size-4" /> {action}
         </Button>
