@@ -3,10 +3,10 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
 const variants: Record<Variant, string> = {
-  primary: "border-ink bg-ink text-paper hover:bg-paper hover:text-ink",
-  secondary: "border-ink bg-paper text-ink hover:bg-ink hover:text-paper",
-  ghost: "border-transparent text-ink hover:border-ink",
-  danger: "border-ink bg-paper text-ink hover:bg-ink hover:text-paper",
+  primary: "border-ink bg-ink text-paper shadow-pop-sm pop-press",
+  secondary: "border-ink bg-card text-ink hover:bg-accent",
+  ghost: "border-transparent text-ink hover:bg-accent",
+  danger: "border-ink bg-card text-ink hover:border-red-600 hover:bg-red-50 hover:text-red-700",
 };
 
 export function Button({
@@ -17,7 +17,7 @@ export function Button({
   return (
     <button
       type="button"
-      className={`inline-flex items-center justify-center gap-2 border-2 px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:border-ink-3 disabled:bg-paper disabled:text-ink-3 ${variants[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-md border-3 px-3 py-2 text-sm focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:border-ink-3 disabled:bg-paper-2 disabled:text-ink-3 disabled:shadow-none ${variants[variant]} ${className}`}
       {...props}
     />
   );
@@ -26,7 +26,7 @@ export function Button({
 export function PanelSection({ title, children }: { title?: string; children: ReactNode }) {
   return (
     <section className="space-y-3 p-4">
-      {title && <p className="text-sm text-ink-2">{title}</p>}
+      {title && <p className="text-xs tracking-wide text-ink-3 uppercase">{title}</p>}
       {children}
     </section>
   );
@@ -46,7 +46,7 @@ export function Field({ label, children }: { label: string; children: ReactNode 
 }
 
 export const inputClass =
-  "w-full border-2 border-ink bg-paper px-3 py-2 text-sm focus:outline-2 focus:outline-offset-1 focus:outline-ink";
+  "w-full rounded-md border-3 border-ink bg-card px-3 py-2 text-sm focus:outline-2 focus:outline-offset-1 focus:outline-ink";
 
 export interface Option<T extends string> {
   value: T;
@@ -68,7 +68,7 @@ export function Segmented<T extends string>({
     <div
       role="radiogroup"
       aria-label={label}
-      className="grid border-2 border-ink"
+      className="grid gap-1 rounded-md border-3 border-ink bg-card p-1"
       style={{ gridTemplateColumns: `repeat(${options.length}, minmax(0, 1fr))` }}
     >
       {options.map((o) => (
@@ -78,8 +78,8 @@ export function Segmented<T extends string>({
           role="radio"
           aria-checked={value === o.value}
           onClick={() => onChange(o.value)}
-          className={`px-2 py-1.5 text-sm ${
-            value === o.value ? "bg-ink text-paper" : "text-ink-2 hover:text-ink"
+          className={`rounded-sm px-2 py-1 text-sm ${
+            value === o.value ? "bg-accent text-ink" : "text-ink-2 hover:bg-paper-2 hover:text-ink"
           }`}
         >
           {o.label}

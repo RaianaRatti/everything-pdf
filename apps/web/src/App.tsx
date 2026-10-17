@@ -1,6 +1,7 @@
 import { Navigate, Outlet, createBrowserRouter } from "react-router";
 import { RouterProvider } from "react-router/dom";
 import { CommandPalette } from "./components/CommandPalette";
+import { SettingsButton } from "./components/SettingsButton";
 import { Home } from "./routes/Home";
 
 // Tool pages load pdf.js and the editor UI; keep them out of the home page bundle.
@@ -11,6 +12,7 @@ function Root() {
     <>
       <Outlet />
       <CommandPalette />
+      <SettingsButton />
     </>
   );
 }

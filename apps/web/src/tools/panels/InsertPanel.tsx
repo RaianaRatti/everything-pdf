@@ -113,7 +113,7 @@ export function InsertPanel() {
         <FilePickerButton
           onFiles={(files) => void insertFiles(files, insertIndex(effective))}
           accept="application/pdf,.pdf,image/*"
-          className="flex w-full items-center justify-center gap-2 border-2 border-ink px-3 py-2 text-sm hover:bg-ink hover:text-paper"
+          className="flex w-full items-center justify-center gap-2 border-2 border-ink px-3 py-2 text-sm hover:bg-accent"
         >
           <FilePlus className="size-4" /> Choose PDF or images…
         </FilePickerButton>

@@ -355,11 +355,11 @@ export function Batch() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex items-center gap-3 border-b-2 border-ink p-2">
+      <header className="flex items-center gap-3 border-b border-ink bg-card p-2 pr-14">
         <Link
           to="/"
           aria-label="All tools"
-          className="border-2 border-transparent px-3 py-1.5 hover:border-ink"
+          className="rounded-md border-2 border-transparent px-3 py-1.5 hover:bg-accent"
         >
           ←
         </Link>
@@ -411,7 +411,7 @@ export function Batch() {
               <Plus className="size-4" /> Add more PDFs
             </FilePickerButton>
           </main>
-          <aside className="shrink-0 border-t-2 border-ink lg:w-96 lg:border-t-0 lg:border-l-2">
+          <aside className="shrink-0 border-t border-ink bg-card lg:w-96 lg:border-t-0 lg:border-l">
             {recipes.length > 0 && (
               <PanelSection title="Saved recipes">
                 <ul className="space-y-1.5">
@@ -420,7 +420,7 @@ export function Batch() {
                       <button
                         type="button"
                         onClick={() => applyRecipe(r.name)}
-                        className="min-w-0 flex-1 truncate border-2 border-ink px-2 py-1 text-left text-sm hover:bg-ink hover:text-paper"
+                        className="min-w-0 flex-1 truncate border-2 border-ink px-2 py-1 text-left text-sm hover:bg-accent"
                       >
                         {r.name}
                         <span className="ml-2 text-xs opacity-70">

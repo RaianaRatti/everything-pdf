@@ -111,11 +111,11 @@ export function Scan() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex items-center gap-3 border-b-2 border-ink p-2">
+      <header className="flex items-center gap-3 border-b border-ink bg-card p-2 pr-14">
         <Link
           to="/"
           aria-label="All tools"
-          className="border-2 border-transparent px-3 py-1.5 hover:border-ink"
+          className="rounded-md border-2 border-transparent px-3 py-1.5 hover:bg-accent"
         >
           ←
         </Link>
@@ -145,7 +145,7 @@ export function Scan() {
         <div className="flex flex-1 flex-col lg:flex-row">
           <aside
             aria-label="Pages"
-            className="order-2 shrink-0 border-t-2 border-ink p-3 lg:order-1 lg:w-44 lg:border-t-0 lg:border-r-2"
+            className="order-2 shrink-0 border-t border-ink p-3 lg:order-1 lg:w-44 lg:border-t-0 lg:border-r"
           >
             <ol className="flex gap-2 overflow-x-auto lg:flex-col">
               {shots.map((shot, i) => (
@@ -211,7 +211,7 @@ export function Scan() {
             )}
           </main>
 
-          <aside className="order-3 shrink-0 border-t-2 border-ink lg:w-80 lg:border-t-0 lg:border-l-2">
+          <aside className="order-3 shrink-0 border-t border-ink bg-card lg:w-80 lg:border-t-0 lg:border-l">
             {selected && (
               <PanelSection title={`Page ${shots.indexOf(selected) + 1}`}>
                 <Field label="Look">
@@ -291,7 +291,7 @@ function PhotoButton({
     <FilePickerButton
       onFiles={onFiles}
       accept="image/*"
-      className="inline-flex items-center justify-center gap-2 border-2 border-ink px-3 py-2 text-sm hover:bg-ink hover:text-paper"
+      className="inline-flex items-center justify-center gap-2 border-2 border-ink px-3 py-2 text-sm hover:bg-accent"
     >
       <ImagePlus className="size-4" /> {compact ? "Photos" : "Choose photos"}
     </FilePickerButton>

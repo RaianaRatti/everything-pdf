@@ -169,8 +169,8 @@ const PageThumb = memo(function PageThumb({
         aria-label={`Page ${number}${selected ? ", selected" : ""}`}
         aria-pressed={selected}
         onClick={(e) => onSelect(page.id, selectMode(e))}
-        className={`cursor-grab p-2.5 transition-colors active:cursor-grabbing ${
-          selected ? "bg-paper-3 ring-2 ring-ink" : "hover:bg-paper-3"
+        className={`cursor-grab rounded-lg p-2.5 transition-colors active:cursor-grabbing ${
+          selected ? "bg-accent ring-2 ring-ink" : "hover:bg-paper-3/70"
         }`}
       >
         <div ref={holder} className="flex aspect-[3/4] items-center justify-center">
@@ -179,7 +179,7 @@ const PageThumb = memo(function PageThumb({
               src={src}
               alt=""
               draggable={false}
-              className="max-h-full max-w-full border-2 border-ink"
+              className="max-h-full max-w-full rounded-sm border-2 border-ink bg-card shadow-pop-sm"
             />
           ) : (
             <div className="size-full animate-pulse bg-paper-3" />
@@ -207,7 +207,7 @@ const PageThumb = memo(function PageThumb({
               stop(e);
               run();
             }}
-            className="bg-ink/80 p-1.5 text-paper hover:bg-ink"
+            className="rounded-md border-2 border-ink bg-card p-1 text-ink hover:bg-accent"
           >
             <Icon className="size-3.5" />
           </button>

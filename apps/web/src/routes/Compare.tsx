@@ -145,11 +145,11 @@ export function Compare() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex items-center gap-3 border-b-2 border-ink p-2">
+      <header className="flex items-center gap-3 border-b border-ink bg-card p-2 pr-14">
         <Link
           to="/"
           aria-label="All tools"
-          className="border-2 border-transparent px-3 py-1.5 hover:border-ink"
+          className="rounded-md border-2 border-transparent px-3 py-1.5 hover:bg-accent"
         >
           ←
         </Link>
@@ -240,7 +240,7 @@ export function Compare() {
                     key={i}
                     type="button"
                     onClick={() => setIndex(i)}
-                    className={`mr-1 border-2 px-1.5 text-xs ${i === index ? "border-ink bg-ink text-paper" : "border-ink"}`}
+                    className={`mr-1 border-2 px-1.5 text-xs ${i === index ? "border-ink bg-accent" : "border-ink"}`}
                   >
                     {i + 1}
                   </button>

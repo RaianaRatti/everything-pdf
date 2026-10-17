@@ -107,9 +107,9 @@ export function Palette({ onClose, onShowHelp }: { onClose: () => void; onShowHe
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="w-full max-w-lg border-2 border-ink bg-card"
+        className="w-full max-w-lg overflow-hidden rounded-lg border-3 border-ink bg-card shadow-pop"
       >
-        <div className="flex items-center gap-2 border-b-2 border-ink px-3">
+        <div className="flex items-center gap-2 border-b border-ink px-3">
           <Command className="size-4 shrink-0" aria-hidden />
           <input
             autoFocus
@@ -155,8 +155,8 @@ export function Palette({ onClose, onShowHelp }: { onClose: () => void; onShowHe
                 aria-selected={i === selected}
                 onPointerMove={() => setActive(i)}
                 onClick={() => choose(entry)}
-                className={`flex cursor-pointer items-center gap-3 px-3 py-2 text-sm ${
-                  i === selected ? "bg-ink text-paper" : ""
+                className={`flex cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-sm ${
+                  i === selected ? "bg-accent" : ""
                 }`}
               >
                 {Icon ? (
@@ -166,7 +166,7 @@ export function Palette({ onClose, onShowHelp }: { onClose: () => void; onShowHe
                 )}
                 <span className="flex-1">{entry.label}</span>
                 {entry.hint && (
-                  <span className={`text-xs ${i === selected ? "text-paper" : "text-ink-3"}`}>
+                  <span className={`text-xs ${i === selected ? "text-ink-2" : "text-ink-3"}`}>
                     {entry.hint}
                   </span>
                 )}
@@ -196,7 +196,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="shortcuts-title"
-        className="w-full max-w-sm border-2 border-ink bg-card p-5"
+        className="w-full max-w-sm rounded-lg border-3 border-ink bg-card p-5 shadow-pop"
       >
         <p id="shortcuts-title" className="mb-3 text-lg">
           keyboard shortcuts
@@ -205,7 +205,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
           {SHORTCUTS.map(([keys, action]) => (
             <div key={action} className="contents">
               <dt>
-                <kbd className="border-2 border-ink px-1.5 py-0.5 text-xs whitespace-nowrap">
+                <kbd className="rounded-sm border-2 border-b-4 border-ink bg-card px-1.5 py-0.5 text-xs whitespace-nowrap">
                   {keys}
                 </kbd>
               </dt>
@@ -217,7 +217,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
           type="button"
           autoFocus
           onClick={onClose}
-          className="mt-4 w-full border-2 border-ink px-3 py-2 text-sm hover:bg-ink hover:text-paper"
+          className="mt-4 w-full rounded-md border-3 border-ink px-3 py-2 text-sm hover:bg-accent"
         >
           Close
         </button>

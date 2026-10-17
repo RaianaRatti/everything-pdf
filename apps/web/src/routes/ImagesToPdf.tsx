@@ -91,11 +91,11 @@ export function ImagesToPdf() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <nav className="border-b-2 border-ink p-2">
+      <nav className="border-b border-ink bg-card p-2 pr-14">
         <Link
           to="/"
           aria-label="All tools"
-          className="inline-block border-2 border-transparent px-3 py-1.5 hover:border-ink"
+          className="inline-block rounded-md border-2 border-transparent px-3 py-1.5 hover:bg-accent"
         >
           ←
         </Link>
@@ -260,7 +260,7 @@ function ImageTile({
         aria-label={`Remove ${item.name}`}
         onPointerDown={(e) => e.stopPropagation()}
         onClick={onRemove}
-        className="absolute top-3 right-3 bg-ink/80 p-1.5 text-paper opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-ink"
+        className="absolute top-3 right-3 rounded-md border-2 border-ink bg-card p-1 text-ink opacity-0 group-focus-within:opacity-100 group-hover:opacity-100 hover:bg-accent"
       >
         <X className="size-3.5" />
       </button>

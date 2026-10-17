@@ -37,7 +37,7 @@ function ToolWorkspace({ tool }: { tool: Tool }) {
           </main>
           <aside
             aria-label={`${tool.name} options`}
-            className="shrink-0 border-t-2 border-ink lg:w-80 lg:overflow-auto lg:border-t-0 lg:border-l-2"
+            className="shrink-0 border-t border-ink bg-card lg:w-80 lg:overflow-auto lg:border-t-0 lg:border-l"
           >
             <Panel />
           </aside>
@@ -66,12 +66,12 @@ function ToolTabs({ active }: { active: Tool }) {
   return (
     <nav
       aria-label="Tools"
-      className="flex shrink-0 gap-2 overflow-x-auto border-b-2 border-ink p-2"
+      className="flex shrink-0 gap-2 overflow-x-auto border-b border-ink bg-card p-2 pr-14"
     >
       <Link
         to="/"
         aria-label="All tools"
-        className="shrink-0 border-2 border-transparent px-3 py-1.5 hover:border-ink"
+        className="shrink-0 rounded-md border-2 border-transparent px-3 py-1.5 hover:bg-accent"
       >
         ←
       </Link>
@@ -81,10 +81,8 @@ function ToolTabs({ active }: { active: Tool }) {
           <NavLink
             key={t.id}
             to={`/${t.id}`}
-            className={`shrink-0 border-2 px-3 py-1.5 text-sm whitespace-nowrap ${
-              t.id === active.id
-                ? "border-ink bg-ink text-paper"
-                : "border-transparent hover:border-ink"
+            className={`shrink-0 rounded-md border-2 px-3 py-1.5 text-sm whitespace-nowrap ${
+              t.id === active.id ? "border-ink bg-accent" : "border-transparent hover:bg-paper-3"
             }`}
           >
             {t.label}

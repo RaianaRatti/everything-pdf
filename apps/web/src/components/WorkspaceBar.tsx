@@ -14,7 +14,7 @@ export function WorkspaceBar() {
   const { undo, redo, reset, setOutputName } = useWorkspace.getState();
 
   return (
-    <div className="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-line bg-paper/90 px-4 py-2.5 backdrop-blur sm:px-6">
+    <div className="sticky top-0 z-20 flex flex-wrap items-center gap-2 border-b border-ink bg-card/90 px-4 py-2.5 backdrop-blur sm:px-6">
       <div className="flex">
         <Button
           variant="ghost"
@@ -52,7 +52,7 @@ export function WorkspaceBar() {
         <FilePickerButton
           onFiles={addFiles}
           accept="application/pdf,.pdf,image/*"
-          className="inline-flex items-center gap-2 px-3 py-2 text-sm text-ink hover:bg-paper-3"
+          className="inline-flex items-center gap-2 rounded-md border-2 border-transparent px-3 py-2 text-sm text-ink hover:bg-accent"
         >
           <Plus className="size-4" /> Add files
         </FilePickerButton>
