@@ -1,29 +1,51 @@
 # Everything PDF
 
-A website for everything you'd want to do with a PDF: merge, split, reorder, rotate, insert and
-interleave pages, and edit bookmarks; add text, images, links, highlights, notes, form fields,
-page numbers, headers, footers and watermarks; redact for real; sign (drawn or with a
-certificate), verify signatures and fill forms; crop, resize, dark-mode, invert or grayscale
-pages; make n-up sheets, booklets and posters; password-protect, unlock and strip metadata;
-compress, repair and OCR; compare two versions; scan pages with a camera; convert to and from
-images and text; and run any of it on many files at once, with saved recipes.
+Everything PDF is a website for everything you'd want to do with a PDF. All processing happens
+in the browser, so your files are never uploaded.
 
-All processing happens in the browser. Files are never uploaded. After the first visit the app
-works offline (except OCR's first run, which downloads its language data). Press ⌘K / Ctrl+K
-anywhere to jump to a tool.
+![Home page](main-page.png)
+
+## Features
+
+- **Organize:** merge, split, reorder, rotate, insert and interleave pages, and edit bookmarks
+- **Edit:** add text, images, links, highlights, notes, form fields, page numbers, headers,
+  footers and watermarks
+- **Redact:** remove content for real, not just cover it up
+- **Sign and fill:** sign (drawn or with a certificate), verify signatures and fill forms
+- **Transform pages:** crop, resize, dark-mode, invert or grayscale pages
+- **Print layouts:** make n-up sheets, booklets and posters
+- **Security:** password-protect, unlock and strip metadata
+- **Optimize:** compress, repair and OCR
+- **More:** compare two versions, scan pages with a camera, and convert to and from images and
+  text
+- **Batch:** run any of it on many files at once, with saved recipes
+
+After the first visit the app works offline (except OCR's first run, which downloads its
+language data). Press `⌘K` / `Ctrl+K` anywhere to jump to a tool.
 
 See [PLAN.md](PLAN.md) for the full feature list and roadmap.
 
-## Getting started
+## Installation
 
 Requires Node 22.22+ (Node 24 recommended; see `.nvmrc`).
 
 ```sh
 npm install
+```
+
+## Usage
+
+### Web app
+
+```sh
 npm run dev        # http://localhost:5173
 ```
 
-## Command line
+Pick a tool from the home page, add your files, and download the result.
+
+![Merge tool](merge-page.png)
+
+### Command line
 
 The same tools work from the terminal:
 
@@ -44,7 +66,14 @@ npx epdf sign-cert contract.pdf --cert me.p12 --password … --visible
 
 To use `epdf` from anywhere: `npm install -g ./packages/cli` (after building).
 
-## Scripts
+## Contributing
+
+Pull requests are welcome. For major changes, please open an issue first to discuss what you
+would like to change.
+
+Please make sure to update tests as appropriate.
+
+### Scripts
 
 | Command             | What it does                      |
 | ------------------- | --------------------------------- |
@@ -56,7 +85,7 @@ To use `epdf` from anywhere: `npm install -g ./packages/cli` (after building).
 | `npm run lint`      | Lint everything                   |
 | `npm run format`    | Format everything with Prettier   |
 
-## Layout
+### Project layout
 
 ```
 apps/web/          React app (Vite, Tailwind, Zustand, dnd-kit)
