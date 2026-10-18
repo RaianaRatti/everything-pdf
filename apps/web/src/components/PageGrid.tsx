@@ -37,7 +37,6 @@ export function PageGrid() {
   const selection = useWorkspace((s) => s.selection);
   const movePage = useWorkspace((s) => s.movePage);
   const select = useWorkspace((s) => s.select);
-  const setSelection = useWorkspace((s) => s.setSelection);
 
   // Distance threshold so a plain click selects instead of starting a drag.
   const sensors = useSensors(
@@ -54,12 +53,7 @@ export function PageGrid() {
   };
 
   return (
-    <div
-      className="min-h-full p-4 sm:p-6"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) setSelection([]);
-      }}
-    >
+    <div className="min-h-full p-4 sm:p-6">
       {showFileColors && (
         <ul className="mb-4 flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-2">
           {fileOrder.map((id, i) => (

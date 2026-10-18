@@ -9,6 +9,8 @@ import { useWorkspace } from "../store/workspace";
 import { panels } from "../tools/panels";
 import { findTool, tools, type Tool } from "../tools/registry";
 
+const INTERACTIVE = "button, a, input, select, textarea, label, [role=button], [role=dialog]";
+
 export function Workspace() {
   const { toolId = "organize" } = useParams();
   const tool = findTool(toolId);
@@ -17,6 +19,7 @@ export function Workspace() {
 
 function ToolWorkspace({ tool }: { tool: Tool }) {
   const hasPages = useWorkspace((s) => s.pages.length > 0);
+  const setSelection = useWorkspace((s) => s.setSelection);
   useWorkspaceShortcuts(hasPages);
   useLeaveWarning(hasPages);
 
@@ -31,7 +34,13 @@ function ToolWorkspace({ tool }: { tool: Tool }) {
       <ToolTabs active={tool} />
       {hasPages ? (
         <div className="flex flex-1 flex-col lg:min-h-0 lg:flex-row">
-          <main className="flex-1 lg:min-h-0 lg:overflow-auto">
+          <main
+            className="flex-1 lg:min-h-0 lg:overflow-auto"
+            onClick={(e) => {
+              // Clicking blank space (not a page, button or field) deselects.
+              if (!(e.target as Element).closest(INTERACTIVE)) setSelection([]);
+            }}
+          >
             <WorkspaceBar />
             <PageGrid />
           </main>

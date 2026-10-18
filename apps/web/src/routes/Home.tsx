@@ -49,7 +49,7 @@ export function Home() {
         {results && (
           <section aria-label="Search results">
             {results.length === 0 ? (
-              <p className="text-ink-3">no tool matches “{query}”.</p>
+              <p className="text-ink-3">no tool matches “{query}”</p>
             ) : (
               <ul className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {results.map((tool) => (
