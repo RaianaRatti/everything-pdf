@@ -106,16 +106,9 @@ export function Home() {
         )}
       </main>
 
-      <footer className="border-t border-ink bg-card">
-        <div className="mx-auto flex w-full max-w-4xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-5 py-5 text-sm text-ink-3 sm:px-8">
-          <span className="flex items-center gap-2.5 text-ink">
-            <Logo />
-            everything-pdf
-          </span>
-          <span>
-            press <kbd>{isMac ? "⌘" : "Ctrl"} K</kbd> anywhere to jump to a tool
-          </span>
-        </div>
+      <footer className="flex items-center gap-2.5 border-t border-ink bg-card py-4 pr-14 pl-5 sm:pl-8">
+        <Logo />
+        <span className="text-lg">everything-pdf</span>
       </footer>
     </div>
   );
