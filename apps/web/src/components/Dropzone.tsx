@@ -27,16 +27,16 @@ export function Dropzone({
         setOver(false);
         onFiles([...e.dataTransfer.files]);
       }}
-      className={`flex flex-col items-center justify-center gap-4 rounded-xl border-3 border-dashed border-ink px-6 py-20 text-center ${
-        over ? "bg-accent" : "bg-card"
+      className={`flex flex-col items-center justify-center gap-4 rounded-xl border-2 border-dashed px-6 py-16 text-center transition-colors sm:py-20 ${
+        over ? "border-ink bg-accent" : "border-ink-3/50 bg-card"
       }`}
     >
       <p className="text-2xl">{title}</p>
-      {subtitle && <p className="text-sm text-ink-2">{subtitle}</p>}
+      {subtitle && <p className="max-w-md text-sm text-ink-2">{subtitle}</p>}
       <button
         type="button"
         onClick={() => input.current?.click()}
-        className="pop-press rounded-md border-3 border-ink bg-ink px-5 py-2.5 text-paper shadow-pop-sm"
+        className="pop-press rounded-md border-2 border-ink bg-ink px-5 py-2.5 text-paper"
       >
         choose files
       </button>

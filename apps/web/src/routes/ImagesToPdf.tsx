@@ -4,10 +4,11 @@ import { CSS } from "@dnd-kit/utilities";
 import type { ImagesToPdfOptions } from "@everything-pdf/engine";
 import { Download, FileOutput, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { Dropzone, FilePickerButton } from "../components/Dropzone";
 import { BusyOverlay, NoticeToast } from "../components/Overlays";
 import { Button, Field, PanelSection, Segmented, inputClass } from "../components/ui";
+import { ToolHeader } from "../components/ToolHeader";
 import { errorMessage, runTask } from "../lib/actions";
 import { downloadBytes } from "../lib/download";
 import { engine } from "../lib/engine";
@@ -91,18 +92,10 @@ export function ImagesToPdf() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <nav className="border-b border-ink bg-card p-2 pr-14">
-        <Link
-          to="/"
-          aria-label="All tools"
-          className="inline-block rounded-md border-2 border-transparent px-3 py-1.5 hover:bg-accent"
-        >
-          ←
-        </Link>
-      </nav>
+      <ToolHeader toolId="images-to-pdf" />
       {items.length === 0 ? (
         <main className="flex-1 p-4 sm:p-8">
-          <div className="mx-auto max-w-2xl pt-4 sm:pt-16">
+          <div className="mx-auto max-w-4xl sm:pt-2">
             <Dropzone
               onFiles={(f) => void add(f)}
               accept="image/*"

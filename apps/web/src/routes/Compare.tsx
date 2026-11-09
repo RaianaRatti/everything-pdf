@@ -1,10 +1,10 @@
 import { diffWords, type DiffPart } from "@everything-pdf/engine/pure";
 import { ChevronLeft, ChevronRight, LoaderCircle } from "lucide-react";
 import { useEffect, useState } from "react";
-import { Link } from "react-router";
 import { Dropzone } from "../components/Dropzone";
 import { BusyOverlay, NoticeToast, PasswordDialog } from "../components/Overlays";
 import { Button, Segmented } from "../components/ui";
+import { ToolHeader } from "../components/ToolHeader";
 import { loadFiles, runTask } from "../lib/actions";
 import { pluralize } from "../lib/files";
 import { canvasToBlob, closeUnusedPdfs, openPdf, renderPage } from "../lib/pdfjs";
@@ -145,19 +145,10 @@ export function Compare() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex items-center gap-3 border-b border-ink bg-card p-2 pr-14">
-        <Link
-          to="/"
-          aria-label="All tools"
-          className="rounded-md border-2 border-transparent px-3 py-1.5 hover:bg-accent"
-        >
-          ←
-        </Link>
-        <h1 className="text-lg">compare pdfs</h1>
+      <ToolHeader toolId="compare">
         {a && b && (
           <Button
             variant="ghost"
-            className="ml-auto"
             onClick={() => {
               setA(null);
               setB(null);
@@ -168,7 +159,7 @@ export function Compare() {
             Start over
           </Button>
         )}
-      </header>
+      </ToolHeader>
 
       {!a || !b ? (
         <main className="grid flex-1 gap-4 p-4 sm:grid-cols-2 sm:p-8">

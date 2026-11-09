@@ -58,7 +58,7 @@ export function PageGrid() {
         <ul className="mb-4 flex flex-wrap gap-x-5 gap-y-1 text-sm text-ink-2">
           {fileOrder.map((id, i) => (
             <li key={id} className="flex items-center gap-1.5">
-              <span className={`size-2.5 rounded-full ${FILE_COLORS[i % FILE_COLORS.length]}`} />
+              <span className={`size-2.5 ${FILE_COLORS[i % FILE_COLORS.length]}`} />
               {files[id]?.name}
             </li>
           ))}
@@ -173,14 +173,14 @@ const PageThumb = memo(function PageThumb({
               src={src}
               alt=""
               draggable={false}
-              className="max-h-full max-w-full rounded-sm border-2 border-ink bg-card shadow-pop-sm"
+              className="max-h-full max-w-full rounded-sm border-2 border-ink bg-card"
             />
           ) : (
             <div className="size-full animate-pulse bg-paper-3" />
           )}
         </div>
         <div className="mt-2 flex items-center justify-center gap-1.5 text-sm text-ink-2">
-          {color && <span className={`size-2 rounded-full ${color}`} aria-hidden />}
+          {color && <span className={`size-2 ${color}`} aria-hidden />}
           {number}
         </div>
       </div>

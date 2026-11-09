@@ -107,7 +107,7 @@ export function Palette({ onClose, onShowHelp }: { onClose: () => void; onShowHe
         role="dialog"
         aria-modal="true"
         aria-label="Command palette"
-        className="w-full max-w-lg overflow-hidden rounded-lg border-3 border-ink bg-card shadow-pop"
+        className="w-full max-w-lg overflow-hidden rounded-lg border-2 border-ink bg-card shadow-pop-sm"
       >
         <div className="flex items-center gap-2 border-b border-ink px-3">
           <Command className="size-4 shrink-0" aria-hidden />
@@ -196,7 +196,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="shortcuts-title"
-        className="w-full max-w-sm rounded-lg border-3 border-ink bg-card p-5 shadow-pop"
+        className="w-full max-w-sm rounded-lg border-2 border-ink bg-card p-5 shadow-pop-sm"
       >
         <p id="shortcuts-title" className="mb-3 text-lg">
           keyboard shortcuts
@@ -217,7 +217,7 @@ export function ShortcutsDialog({ onClose }: { onClose: () => void }) {
           type="button"
           autoFocus
           onClick={onClose}
-          className="mt-4 w-full rounded-md border-3 border-ink px-3 py-2 text-sm hover:bg-accent"
+          className="mt-4 w-full rounded-md border-2 border-ink px-3 py-2 text-sm hover:bg-accent"
         >
           Close
         </button>

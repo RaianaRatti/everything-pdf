@@ -11,7 +11,7 @@ export function BusyOverlay() {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/25 backdrop-blur-[2px]">
       <div
         role="status"
-        className="flex items-center gap-3 rounded-lg border-3 border-ink bg-card px-5 py-4 text-lg shadow-pop"
+        className="flex items-center gap-3 rounded-lg border-2 border-ink bg-card px-5 py-4 text-lg shadow-pop-sm"
       >
         <LoaderCircle className="size-5 animate-spin text-ink" aria-hidden />
         {busy}
@@ -36,7 +36,7 @@ export function NoticeToast() {
     <div className="fixed inset-x-4 bottom-4 z-50 flex justify-center">
       <div
         role={error ? "alert" : "status"}
-        className={`flex max-w-lg items-start gap-3 rounded-lg border-3 bg-card px-4 py-3 text-sm text-ink shadow-pop ${
+        className={`flex max-w-lg items-start gap-3 rounded-lg border-2 bg-card px-4 py-3 text-sm text-ink shadow-pop-sm ${
           error ? "border-red-600" : "border-ink"
         }`}
       >
@@ -101,7 +101,7 @@ export function WindowDropTarget({ onFiles }: { onFiles: (files: File[]) => void
   if (!over) return null;
   return (
     <div className="pointer-events-none fixed inset-0 z-40 flex items-center justify-center bg-ink/5 ring-4 ring-accent ring-inset">
-      <p className="rounded-lg border-3 border-ink bg-card px-5 py-3 text-xl shadow-pop">
+      <p className="rounded-lg border-2 border-ink bg-card px-5 py-3 text-xl shadow-pop-sm">
         Drop to add files
       </p>
     </div>
@@ -130,7 +130,7 @@ export function PasswordDialog() {
           finish(password);
         }}
         onKeyDown={(e) => e.key === "Escape" && finish(null)}
-        className="w-full max-w-sm space-y-4 rounded-lg border-3 border-ink bg-card p-5 shadow-pop"
+        className="w-full max-w-sm space-y-4 rounded-lg border-2 border-ink bg-card p-5 shadow-pop-sm"
       >
         <p id="password-title" className="flex items-center gap-2 text-lg">
           <LockKeyhole className="size-5" aria-hidden /> password needed

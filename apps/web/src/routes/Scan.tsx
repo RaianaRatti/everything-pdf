@@ -11,10 +11,11 @@ import {
   X,
 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Link, useNavigate } from "react-router";
+import { useNavigate } from "react-router";
 import { FilePickerButton } from "../components/Dropzone";
 import { BusyOverlay, NoticeToast } from "../components/Overlays";
 import { Button, Field, Hint, PanelSection, Segmented } from "../components/ui";
+import { ToolHeader } from "../components/ToolHeader";
 import { errorMessage, runTask } from "../lib/actions";
 import { downloadBytes } from "../lib/download";
 import { engine } from "../lib/engine";
@@ -111,20 +112,11 @@ export function Scan() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex items-center gap-3 border-b border-ink bg-card p-2 pr-14">
-        <Link
-          to="/"
-          aria-label="All tools"
-          className="rounded-md border-2 border-transparent px-3 py-1.5 hover:bg-accent"
-        >
-          ←
-        </Link>
-        <h1 className="text-lg">scan to pdf</h1>
-      </header>
+      <ToolHeader toolId="scan" />
 
       {shots.length === 0 ? (
         <main className="flex flex-1 items-start justify-center p-4 sm:p-8">
-          <div className="flex w-full max-w-2xl flex-col items-center gap-4 border-2 border-dashed border-ink px-6 py-16 text-center sm:mt-8">
+          <div className="flex w-full max-w-4xl flex-col items-center gap-4 rounded-xl border-2 border-dashed border-ink-3/50 bg-card px-6 py-16 text-center sm:mt-2 sm:py-20">
             <ScanLine className="size-10" aria-hidden />
             <p className="text-xl">photograph your pages</p>
             <p className="max-w-md text-sm text-ink-2">

@@ -1,8 +1,9 @@
 import { useEffect } from "react";
-import { Link, NavLink, Navigate, useParams } from "react-router";
+import { NavLink, Navigate, useParams } from "react-router";
 import { Dropzone } from "../components/Dropzone";
 import { BusyOverlay, NoticeToast, PasswordDialog, WindowDropTarget } from "../components/Overlays";
 import { PageGrid } from "../components/PageGrid";
+import { ToolHeader } from "../components/ToolHeader";
 import { WorkspaceBar } from "../components/WorkspaceBar";
 import { addFiles, downloadDocument } from "../lib/actions";
 import { useWorkspace } from "../store/workspace";
@@ -31,6 +32,7 @@ function ToolWorkspace({ tool }: { tool: Tool }) {
 
   return (
     <div className="flex min-h-dvh flex-col lg:h-dvh">
+      <ToolHeader toolId={tool.id} />
       <ToolTabs active={tool} />
       {hasPages ? (
         <div className="flex flex-1 flex-col lg:min-h-0 lg:flex-row">
@@ -54,7 +56,7 @@ function ToolWorkspace({ tool }: { tool: Tool }) {
         </div>
       ) : (
         <main className="flex-1 overflow-auto p-4 sm:p-8">
-          <div className="mx-auto max-w-2xl pt-4 sm:pt-16">
+          <div className="mx-auto max-w-4xl sm:pt-2">
             <Dropzone
               onFiles={(f) => void addFiles(f)}
               accept="application/pdf,.pdf,image/*"
@@ -71,27 +73,23 @@ function ToolWorkspace({ tool }: { tool: Tool }) {
   );
 }
 
+/** The other tools in this category; switching keeps the open pages. */
 function ToolTabs({ active }: { active: Tool }) {
   return (
     <nav
-      aria-label="Tools"
-      className="flex shrink-0 gap-2 overflow-x-auto border-b border-ink bg-card p-2 pr-14"
+      aria-label={`${active.category} tools`}
+      className="flex shrink-0 gap-1 overflow-x-auto border-b border-ink bg-paper-2 px-3 py-1.5 sm:px-5"
     >
-      <Link
-        to="/"
-        aria-label="All tools"
-        className="shrink-0 rounded-md border-2 border-transparent px-3 py-1.5 hover:bg-accent"
-      >
-        ←
-      </Link>
       {tools
         .filter((t) => t.category === active.category)
         .map((t) => (
           <NavLink
             key={t.id}
             to={`/${t.id}`}
-            className={`shrink-0 rounded-md border-2 px-3 py-1.5 text-sm whitespace-nowrap ${
-              t.id === active.id ? "border-ink bg-accent" : "border-transparent hover:bg-paper-3"
+            className={`shrink-0 rounded-md px-2.5 py-1 text-sm whitespace-nowrap ${
+              t.id === active.id
+                ? "bg-accent text-ink"
+                : "text-ink-2 hover:bg-paper-3 hover:text-ink"
             }`}
           >
             {t.label}

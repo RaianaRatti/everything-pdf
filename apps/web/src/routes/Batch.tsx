@@ -8,9 +8,9 @@ import {
 } from "@everything-pdf/engine/pure";
 import { BookmarkPlus, ChevronDown, ChevronUp, Download, Plus, Trash, X } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
-import { Link } from "react-router";
 import { Dropzone, FilePickerButton } from "../components/Dropzone";
 import { BusyOverlay, NoticeToast, PasswordDialog } from "../components/Overlays";
+import { ToolHeader } from "../components/ToolHeader";
 import {
   Button,
   Checkbox,
@@ -355,20 +355,11 @@ export function Batch() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-      <header className="flex items-center gap-3 border-b border-ink bg-card p-2 pr-14">
-        <Link
-          to="/"
-          aria-label="All tools"
-          className="rounded-md border-2 border-transparent px-3 py-1.5 hover:bg-accent"
-        >
-          ←
-        </Link>
-        <h1 className="text-lg">batch process</h1>
-      </header>
+      <ToolHeader toolId="batch" />
 
       {files.length === 0 ? (
         <main className="flex-1 p-4 sm:p-8">
-          <div className="mx-auto max-w-2xl pt-4 sm:pt-16">
+          <div className="mx-auto max-w-4xl sm:pt-2">
             <Dropzone
               onFiles={(f) => void add(f)}
               accept="application/pdf,.pdf"
